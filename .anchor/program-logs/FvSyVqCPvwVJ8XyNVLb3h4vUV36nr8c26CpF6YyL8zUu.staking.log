@@ -1,6 +1,42 @@
 Streaming transaction logs mentioning FvSyVqCPvwVJ8XyNVLb3h4vUV36nr8c26CpF6YyL8zUu. Confirmed commitment
-Transaction executed in slot 121084615:
-  Signature: mj3LzCrXxvWfaryBXBAhFHFEQzXFxcWkhSpCubkbcbK8DK446EAHwAjh123JoeePiN72fn54tAxcPP3maD2kHhh
+Transaction executed in slot 121167479:
+  Signature: 2Gyr66AdwJhdBbTwJUU7sQZTmoP2pvaAxjkTxbGJGUy57mRm7TnAvaobE1Nq8aAgMKmC41YYjjV7jqEoCjCRBxZV
+  Status: Ok
+  Log Messages:
+    Program FvSyVqCPvwVJ8XyNVLb3h4vUV36nr8c26CpF6YyL8zUu invoke [1]
+    Program log: Instruction: Stake
+    Program 11111111111111111111111111111111 invoke [2]
+    Program 11111111111111111111111111111111 success
+    Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]
+    Program log: Instruction: InitializeAccount
+    Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 3297 of 181591 compute units
+    Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success
+    Program 11111111111111111111111111111111 invoke [2]
+    Program 11111111111111111111111111111111 success
+    Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]
+    Program log: Instruction: SetAuthority
+    Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 1770 of 155139 compute units
+    Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success
+    Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]
+    Program log: Instruction: Transfer
+    Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 2643 of 149634 compute units
+    Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success
+    Program FvSyVqCPvwVJ8XyNVLb3h4vUV36nr8c26CpF6YyL8zUu consumed 55256 of 200000 compute units
+    Program FvSyVqCPvwVJ8XyNVLb3h4vUV36nr8c26CpF6YyL8zUu success
+Transaction executed in slot 121167486:
+  Signature: WzpjXu1bsUSoceCmGHSZu74Hw4xoa5XL7x9rdW7edF1JsVKHSTKLLrhAgqX47bHHeARofWEJ97yiAXhuLg2erAT
+  Status: Ok
+  Log Messages:
+    Program FvSyVqCPvwVJ8XyNVLb3h4vUV36nr8c26CpF6YyL8zUu invoke [1]
+    Program log: Instruction: Collect
+    Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]
+    Program log: Instruction: MintTo
+    Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 2613 of 185017 compute units
+    Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success
+    Program FvSyVqCPvwVJ8XyNVLb3h4vUV36nr8c26CpF6YyL8zUu consumed 19920 of 200000 compute units
+    Program FvSyVqCPvwVJ8XyNVLb3h4vUV36nr8c26CpF6YyL8zUu success
+Transaction executed in slot 121167490:
+  Signature: ptMajPhbxNQKBM1DHnNxCWsLeJ4oyc1bC5dttUxX6WoWLMe6LB1UG9ZPQYgpjn3J3CxsUn5EQd5VC16rMAcsqrJ
   Status: Ok
   Log Messages:
     Program FvSyVqCPvwVJ8XyNVLb3h4vUV36nr8c26CpF6YyL8zUu invoke [1]

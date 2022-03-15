@@ -5,7 +5,7 @@ use spl_token::instruction::AuthorityType;
 declare_id!("FvSyVqCPvwVJ8XyNVLb3h4vUV36nr8c26CpF6YyL8zUu");
 
 
-const ESCROW_PDA_SEED: &[u8] = b"escrow";
+const VAULT_PDA_SEED: &[u8] = b"vault";
 const STAKING_AMOUNT: u64 = 1;
 
 const TIER_ONE_REWARD_RATE: u64 = 5;
@@ -32,15 +32,15 @@ pub mod staking {
             .owner_staking_token_account
             .to_account_info()
             .key;
-            ctx.accounts.staking_account.staking_mint = *ctx.accounts.staking_mint.to_account_info().key;
-            
-            ctx.accounts.staking_account.created = timestamp;
-            ctx.accounts.staking_account.last_reward_collection = timestamp;
-            ctx.accounts.staking_account.total_reward_collected = 0;
-            ctx.accounts.staking_account.earliest_unstake = earliest_unstake;
+        ctx.accounts.staking_account.staking_mint = *ctx.accounts.staking_mint.to_account_info().key;
+        
+        ctx.accounts.staking_account.created = timestamp;
+        ctx.accounts.staking_account.last_reward_collection = timestamp;
+        ctx.accounts.staking_account.total_reward_collected = 0;
+        ctx.accounts.staking_account.earliest_unstake = earliest_unstake;
 
         let (vault_authority, _vault_authority_bump) =
-            Pubkey::find_program_address(&[ESCROW_PDA_SEED, &*ctx.accounts.staking_account.to_account_info().key.as_ref(), &*ctx.accounts.staking_mint.to_account_info().key.as_ref()], ctx.program_id);
+            Pubkey::find_program_address(&[VAULT_PDA_SEED, &*ctx.accounts.staking_account.to_account_info().key.as_ref(), &*ctx.accounts.staking_mint.to_account_info().key.as_ref()], ctx.program_id);
 
         token::set_authority(
             ctx.accounts.into_set_authority_context(),
@@ -96,9 +96,9 @@ pub mod staking {
         }
 
         let (_vault_authority, vault_authority_bump) =
-            Pubkey::find_program_address(&[ESCROW_PDA_SEED, &*ctx.accounts.staking_account.to_account_info().key.as_ref(), &*ctx.accounts.staking_mint.to_account_info().key.as_ref()], ctx.program_id);
+            Pubkey::find_program_address(&[VAULT_PDA_SEED, &*ctx.accounts.staking_account.to_account_info().key.as_ref(), &*ctx.accounts.staking_mint.to_account_info().key.as_ref()], ctx.program_id);
 
-        let authority_seeds = &[&ESCROW_PDA_SEED, &*ctx.accounts.staking_account.to_account_info().key.as_ref(), &*ctx.accounts.staking_mint.to_account_info().key.as_ref(), &[vault_authority_bump]];
+        let authority_seeds = &[&VAULT_PDA_SEED, &*ctx.accounts.staking_account.to_account_info().key.as_ref(), &*ctx.accounts.staking_mint.to_account_info().key.as_ref(), &[vault_authority_bump]];
 
         token::transfer(
             ctx.accounts
@@ -127,7 +127,7 @@ pub struct Stake<'info> {
     pub staking_mint: Account<'info, Mint>, 
     #[account(
         init,
-        seeds = [b"vault".as_ref(), staking_account.key().as_ref(), staking_mint.key().as_ref()],
+        seeds = [b"receipt".as_ref(), staking_account.key().as_ref(), staking_mint.key().as_ref()],
         bump,
         payer = staking_token_owner,
         token::mint = staking_mint,

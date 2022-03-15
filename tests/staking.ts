@@ -63,13 +63,13 @@ describe('staking', () => {
       const tokenMintPk = invalidToken.account.data.parsed.info.mint;
       const tokenPk = new PublicKey(tokenMintPk);
 
-      const escroKeypair = anchor.web3.Keypair.generate();
+      const vaultKeypair = anchor.web3.Keypair.generate();
 
       const [_vault_account_pda, _vault_account_bump] =
         await PublicKey.findProgramAddress(
           [
-            Buffer.from(anchor.utils.bytes.utf8.encode('vault')),
-            escroKeypair.publicKey.toBuffer(),
+            Buffer.from(anchor.utils.bytes.utf8.encode('receipt')),
+            vaultKeypair.publicKey.toBuffer(),
             tokenPk.toBuffer(),
           ],
           program.programId
@@ -86,12 +86,12 @@ describe('staking', () => {
           stakingMint: tokenPk,
           vaultAccount: vault_account_pda,
           ownerStakingTokenAccount: tokenAccount.address,
-          stakingAccount: escroKeypair.publicKey,
+          stakingAccount: vaultKeypair.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
           tokenProgram: TOKEN_PROGRAM_ID,
         },
-        signers: [escroKeypair, payerKeypair],
+        signers: [vaultKeypair, payerKeypair],
       });
       // }
 
@@ -114,7 +114,7 @@ describe('staking', () => {
     const [_vault_account_pda, _vault_account_bump] =
       await PublicKey.findProgramAddress(
         [
-          Buffer.from(anchor.utils.bytes.utf8.encode('vault')),
+          Buffer.from(anchor.utils.bytes.utf8.encode('receipt')),
           escroKeypair.publicKey.toBuffer(),
           tokenPk.toBuffer(),
         ],
@@ -147,84 +147,80 @@ describe('staking', () => {
     console.log('token successfuly staked!');
   });
 
-  // it('Fails to unstake a token before the minimum duration', async () => {
-  //   let _allEscrow = await program.account.stakeAccount.all();
-  //   let stakedToken = _allEscrow.filter(
-  //     (token) => token.account.stakingMint.toString() === tokenMintKey.toString()
-  //   );
-
-  //   console.log(stakedToken[0].account.created.toString());
-  //   console.log(
-  //     Math.floor(Date.now() / 1000) -
-  //       parseInt(stakedToken[0].account.created.toString())
-  //   );
-
-  //   try {
-  //     console.log('attempting unstake...');
-
-  //     const [_vault_account_pda, _vault_account_bump] =
-  //       await PublicKey.findProgramAddress(
-  //         [
-  //           Buffer.from(anchor.utils.bytes.utf8.encode('vault')),
-  //           stakedToken[0].publicKey.toBuffer(),
-  //           stakedToken[0].account.stakingMint.toBuffer(),
-  //         ],
-  //         program.programId
-  //       );
-
-  //     const vault_account_pda = _vault_account_pda;
-  //     const vault_account_bump = _vault_account_bump;
-
-  //     const [_vault_authority_pda, _vault_authority_bump] =
-  //       await PublicKey.findProgramAddress(
-  //         [
-  //           Buffer.from(anchor.utils.bytes.utf8.encode('escrow')),
-  //           stakedToken[0].publicKey.toBuffer(),
-  //           stakedToken[0].account.stakingMint.toBuffer(),
-  //         ],
-  //         program.programId
-  //       );
-
-  //     const vault_authority_pda = _vault_authority_pda;
-
-  //     await program.rpc.unstake({
-  //       accounts: {
-  //         stakingTokenOwner: initializerMainAccount.publicKey,
-
-  //         stakingMint: stakedToken[0].account.stakingMint,
-  //         ownerStakingTokenAccount:
-  //           stakedToken[0].account.ownerStakingTokenAccount,
-  //         vaultAccount: vault_account_pda,
-  //         vaultAuthority: vault_authority_pda,
-  //         stakingAccount: stakedToken[0].publicKey,
-  //         tokenProgram: TOKEN_PROGRAM_ID,
-  //       },
-  //       signers: [initializerMainAccount],
-  //     });
-
-  //     _allEscrow = await program.account.stakeAccount.all();
-
-  //     console.log(_allEscrow);
-  //     console.log('early unstaking went through');
-  //     assert.ok(false);
-  //   } catch {
-  //     console.log('early unstaking failed');
-  //     assert.ok(true);
-  //   }
-  // });
-
-  it('Prevents a user from collecting rewards before the minimum duration', async () => {
-    console.log('attempting early reward collection');
-    let _allEscrow = await program.account.stakeAccount.all();
-    let selectedToken = _allEscrow.filter(
+  it('Fails to unstake a token before the minimum duration', async () => {
+    let _allVault = await program.account.stakeAccount.all();
+    let stakedToken = _allVault.filter(
       (token) =>
         token.account.stakingMint.toString() === tokenMintKey.toString()
     );
-    // console.log(selectedToken[0].account.lastRewardCollection.toString());
-    // console.log(
-    //   Math.floor(Date.now() / 1000) -
-    //     parseInt(selectedToken[0].account.lastRewardCollection.toString())
-    // );
+
+    console.log(stakedToken[0].account.created.toString());
+    console.log(
+      Math.floor(Date.now() / 1000) -
+        parseInt(stakedToken[0].account.created.toString())
+    );
+
+    try {
+      console.log('attempting unstake...');
+
+      const [_vault_account_pda, _vault_account_bump] =
+        await PublicKey.findProgramAddress(
+          [
+            Buffer.from(anchor.utils.bytes.utf8.encode('receipt')),
+            stakedToken[0].publicKey.toBuffer(),
+            stakedToken[0].account.stakingMint.toBuffer(),
+          ],
+          program.programId
+        );
+
+      const vault_account_pda = _vault_account_pda;
+      const vault_account_bump = _vault_account_bump;
+
+      const [_vault_authority_pda, _vault_authority_bump] =
+        await PublicKey.findProgramAddress(
+          [
+            Buffer.from(anchor.utils.bytes.utf8.encode('vault')),
+            stakedToken[0].publicKey.toBuffer(),
+            stakedToken[0].account.stakingMint.toBuffer(),
+          ],
+          program.programId
+        );
+
+      const vault_authority_pda = _vault_authority_pda;
+
+      await program.rpc.unstake({
+        accounts: {
+          stakingTokenOwner: initializerMainAccount.publicKey,
+
+          stakingMint: stakedToken[0].account.stakingMint,
+          ownerStakingTokenAccount:
+            stakedToken[0].account.ownerStakingTokenAccount,
+          vaultAccount: vault_account_pda,
+          vaultAuthority: vault_authority_pda,
+          stakingAccount: stakedToken[0].publicKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        },
+        signers: [initializerMainAccount],
+      });
+
+      _allVault = await program.account.stakeAccount.all();
+
+      console.log(_allVault);
+      console.log('early unstaking went through');
+      assert.ok(false);
+    } catch {
+      console.log('early unstaking failed');
+      assert.ok(true);
+    }
+  });
+
+  it('Prevents a user from collecting rewards before the minimum duration', async () => {
+    console.log('attempting early reward collection');
+    let _allVault = await program.account.stakeAccount.all();
+    let selectedToken = _allVault.filter(
+      (token) =>
+        token.account.stakingMint.toString() === tokenMintKey.toString()
+    );
 
     try {
       let retrievedRewardAta = (
@@ -262,8 +258,8 @@ describe('staking', () => {
     try {
       console.log('false public key attempting to collect rewards...');
 
-      let _allEscrow = await program.account.stakeAccount.all();
-      let selectedToken = _allEscrow.filter(
+      let _allVault = await program.account.stakeAccount.all();
+      let selectedToken = _allVault.filter(
         (token) =>
           token.account.stakingMint.toString() === tokenMintKey.toString()
       );
@@ -307,13 +303,11 @@ describe('staking', () => {
         'false public key with more information attempting to collect rewards...'
       );
 
-      let _allEscrow = await program.account.stakeAccount.all();
-      let selectedToken = _allEscrow.filter(
+      let _allVault = await program.account.stakeAccount.all();
+      let selectedToken = _allVault.filter(
         (token) =>
           token.account.stakingMint.toString() === tokenMintKey.toString()
       );
-
-      console.log('retrieved from escrow ATA');
 
       let retrievedRewardAta = (
         await provider.connection.getParsedTokenAccountsByOwner(
@@ -350,8 +344,8 @@ describe('staking', () => {
 
   it('Fails to unstake a token staked by someone else', async () => {
     try {
-      let _allEscrow = await program.account.stakeAccount.all();
-      let stakedToken = _allEscrow.filter(
+      let _allVault = await program.account.stakeAccount.all();
+      let stakedToken = _allVault.filter(
         (token) =>
           token.account.stakingMint.toString() === tokenMintKey.toString()
       );
@@ -363,7 +357,7 @@ describe('staking', () => {
       const [_vault_account_pda, _vault_account_bump] =
         await PublicKey.findProgramAddress(
           [
-            Buffer.from(anchor.utils.bytes.utf8.encode('vault')),
+            Buffer.from(anchor.utils.bytes.utf8.encode('receipt')),
             stakedToken[0].publicKey.toBuffer(),
             stakedToken[0].account.stakingMint.toBuffer(),
           ],
@@ -376,7 +370,7 @@ describe('staking', () => {
       const [_vault_authority_pda, _vault_authority_bump] =
         await PublicKey.findProgramAddress(
           [
-            Buffer.from(anchor.utils.bytes.utf8.encode('escrow')),
+            Buffer.from(anchor.utils.bytes.utf8.encode('vault')),
             stakedToken[0].publicKey.toBuffer(),
             stakedToken[0].account.stakingMint.toBuffer(),
           ],
@@ -400,9 +394,9 @@ describe('staking', () => {
         signers: [payerKeypair],
       });
 
-      _allEscrow = await program.account.stakeAccount.all();
+      _allVault = await program.account.stakeAccount.all();
 
-      console.log(_allEscrow);
+      console.log(_allVault);
       console.log('false unstake successful');
     } catch {
       console.log('false unstake failed');
@@ -413,8 +407,8 @@ describe('staking', () => {
   it('Allows a user to collect rewards after the minimum duration passes', async () => {
     console.log('attempting distribution...');
 
-    let _allEscrow = await program.account.stakeAccount.all();
-    let selectedToken = _allEscrow.filter(
+    let _allVault = await program.account.stakeAccount.all();
+    let selectedToken = _allVault.filter(
       (token) =>
         token.account.stakingMint.toString() === tokenMintKey.toString()
     );
@@ -452,8 +446,8 @@ describe('staking', () => {
   });
 
   it('Unstakes a token', async () => {
-    let _allEscrow = await program.account.stakeAccount.all();
-    let stakedToken = _allEscrow.filter(
+    let _allVault = await program.account.stakeAccount.all();
+    let stakedToken = _allVault.filter(
       (token) =>
         token.account.stakingMint.toString() === tokenMintKey.toString()
     );
@@ -470,7 +464,7 @@ describe('staking', () => {
     const [_vault_account_pda, _vault_account_bump] =
       await PublicKey.findProgramAddress(
         [
-          Buffer.from(anchor.utils.bytes.utf8.encode('vault')),
+          Buffer.from(anchor.utils.bytes.utf8.encode('receipt')),
           stakedToken[0].publicKey.toBuffer(),
           stakedToken[0].account.stakingMint.toBuffer(),
         ],
@@ -483,7 +477,7 @@ describe('staking', () => {
     const [_vault_authority_pda, _vault_authority_bump] =
       await PublicKey.findProgramAddress(
         [
-          Buffer.from(anchor.utils.bytes.utf8.encode('escrow')),
+          Buffer.from(anchor.utils.bytes.utf8.encode('vault')),
           stakedToken[0].publicKey.toBuffer(),
           stakedToken[0].account.stakingMint.toBuffer(),
         ],
@@ -507,8 +501,8 @@ describe('staking', () => {
       signers: [initializerMainAccount],
     });
 
-    _allEscrow = await program.account.stakeAccount.all();
+    _allVault = await program.account.stakeAccount.all();
 
-    console.log(_allEscrow);
+    console.log(_allVault);
   });
 });
