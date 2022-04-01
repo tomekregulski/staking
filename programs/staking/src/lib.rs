@@ -7,6 +7,7 @@ declare_id!("FvSyVqCPvwVJ8XyNVLb3h4vUV36nr8c26CpF6YyL8zUu");
 
 const VAULT_PDA_SEED: &[u8] = b"vault";
 const STAKING_AMOUNT: u64 = 1;
+const MINIMUM_COLLECTION_PERIOD: i64 = 86400; // 1 day in seconds
 
 // Reward tiers for standard collection
 const ONE_WEEK_REWARD: u64 = 35;
@@ -18,11 +19,6 @@ const ONE_WEEK_REWARD_OOO: u64 = 49;
 const TWO_WEEK_REWARD_OOO: u64 = 140;
 const FOUR_WEEK_REWARD_OOO: u64 = 420;
 
-// Old tiers to be removed
-// const TIER_ONE_REWARD_RATE: u64 = 5;
-// const TIER_TWO_REWARD_RATE: u64 = 10;
-// const TIER_ONE_THRESHHOLD: i64 = 5;
-
 // Staking period tiers, duration in seconds. Alternative shorter periods for testing purposes in comments
 const STAKING_PERIOD_ONE_WEEK: i64 = 604800;
 // const STAKING_PERIOD_ONE_WEEK: i64 = 10;
@@ -30,10 +26,6 @@ const STAKING_PERIOD_TWO_WEEK: i64 = 1209600;
 // const STAKING_PERIOD_TWO_WEEK: i64 = 20;
 const STAKING_PERIOD_FOUR_WEEK: i64 = 2419200;
 // const STAKING_PERIOD_FOUR_WEEK: i64 = 30;
-
-// Old minimums, to be removed
-// const MINIMUM_STAKING_PERIOD: i64 = 2;
-// const MINIMUM_COLLECTION_PERIOD: i64 = 1;
 
 // Size constants
 const DISCRIMINATOR_LENGTH: usize = 8;
@@ -100,18 +92,36 @@ pub mod staking {
         Ok(())
     }
 
-    pub fn collect(ctx: Context<Collect>, duration: u64) -> ProgramResult {
+    pub fn collect(ctx: Context<Collect>) -> ProgramResult {
 
         let clock: Clock = Clock::get().unwrap();
         let timestamp = clock.unix_timestamp;
         let elapsed: i64 = timestamp - ctx.accounts.staking_account.last_reward_collection;
 
+        if elapsed < MINIMUM_COLLECTION_PERIOD {
+            return Err(ErrorCode::TooEarlyToUnstake.into())
+        }
+
+        let days = elapsed / MINIMUM_COLLECTION_PERIOD;
         let mut amount: u64 = 0;
 
-        // TODO:
-        // Calculate total remaining billable seconds
-        // Calculate portion of reward equivalent to elapsed value
-        // Round up to nearest whole number before issuing amount
+        if ctx.accounts.staking_account.is_one_of_one == true {
+            if ctx.accounts.staking_account.staking_period == 0 {
+                amount = (ONE_WEEK_REWARD_OOO as u64 / 7) * days as u64;
+            } else if ctx.accounts.staking_account.staking_period == 1 {
+                amount = (TWO_WEEK_REWARD_OOO as u64 / 14) * days as u64;
+            } else if ctx.accounts.staking_account.staking_period == 2 {
+                amount = (FOUR_WEEK_REWARD_OOO as u64 / 28) * days as u64;
+            }
+        } else {
+            if ctx.accounts.staking_account.staking_period == 0 {
+                amount = (ONE_WEEK_REWARD as u64 / 7) * days as u64;
+            } else if ctx.accounts.staking_account.staking_period == 1 {
+                amount = (TWO_WEEK_REWARD as u64 / 14) * days as u64;
+            } else if ctx.accounts.staking_account.staking_period == 2 {
+                amount = (FOUR_WEEK_REWARD as u64 / 28) * days as u64;
+            }
+        }
 
         token::mint_to(ctx.accounts.into_mint_to_staker(), amount).unwrap();
 
@@ -129,8 +139,8 @@ pub mod staking {
         if ctx.accounts.staking_account.unstake_date > timestamp {
              return Err(ErrorCode::TooEarlyToUnstake.into())
         }
-
-        let mut amount: u64 = 1;
+        
+        let mut amount: u64 = 0;
 
         if ctx.accounts.staking_account.is_one_of_one == true {
             if ctx.accounts.staking_account.staking_period == 0 {
@@ -150,7 +160,6 @@ pub mod staking {
             }
         }
 
-        // NEED TO ROUND TO DAYS OR DIVIDE TOTAL BY BY SECONDS
         amount = amount - ctx.accounts.staking_account.total_reward_collected;
 
         token::mint_to(ctx.accounts.into_mint_to_staker(), amount).unwrap();
