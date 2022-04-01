@@ -20,12 +20,12 @@ const TWO_WEEK_REWARD_OOO: u64 = 140;
 const FOUR_WEEK_REWARD_OOO: u64 = 420;
 
 // Staking period tiers, duration in seconds. Alternative shorter periods for testing purposes in comments
-// const STAKING_PERIOD_ONE_WEEK: i64 = 604800;
-const STAKING_PERIOD_ONE_WEEK: i64 = 1;
-// const STAKING_PERIOD_TWO_WEEK: i64 = 1209600;
-const STAKING_PERIOD_TWO_WEEK: i64 = 20;
-// const STAKING_PERIOD_FOUR_WEEK: i64 = 2419200;
-const STAKING_PERIOD_FOUR_WEEK: i64 = 30;
+const STAKING_PERIOD_ONE_WEEK: i64 = 604800;
+// const STAKING_PERIOD_ONE_WEEK: i64 = 1;
+const STAKING_PERIOD_TWO_WEEK: i64 = 1209600;
+// const STAKING_PERIOD_TWO_WEEK: i64 = 20;
+const STAKING_PERIOD_FOUR_WEEK: i64 = 2419200;
+// const STAKING_PERIOD_FOUR_WEEK: i64 = 30;
 
 // Size constants
 const DISCRIMINATOR_LENGTH: usize = 8;
@@ -38,7 +38,7 @@ pub mod staking {
     // Allow user to stake a single NFT
     pub fn stake(ctx: Context<Stake>, staking_period: u16, is_one_of_one: bool) -> ProgramResult {
 
-        // Define variables based on input/time
+        // Define variables based on args/time
         let clock: Clock = Clock::get().unwrap();
         let timestamp = clock.unix_timestamp;
 
