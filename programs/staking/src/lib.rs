@@ -8,21 +8,45 @@ declare_id!("FvSyVqCPvwVJ8XyNVLb3h4vUV36nr8c26CpF6YyL8zUu");
 const VAULT_PDA_SEED: &[u8] = b"vault";
 const STAKING_AMOUNT: u64 = 1;
 
-const TIER_ONE_REWARD_RATE: u64 = 5;
-const TIER_TWO_REWARD_RATE: u64 = 10;
-const TIER_ONE_THRESHHOLD: i64 = 5;
+// Reward tiers for standard collection
+const ONE_WEEK_REWARD: u64 = 35;
+const TWO_WEEK_REWARD: u64 = 98;
+const FOUR_WEEK_REWARD: u64 = 280;
 
-const MINIMUM_STAKING_PERIOD: i64 = 2;
-const MINIMUM_COLLECTION_PERIOD: i64 = 1;
+// Reward tiers for One-of-One tokens (OOO)
+const ONE_WEEK_REWARD_OOO: u64 = 49;
+const TWO_WEEK_REWARD_OOO: u64 = 140;
+const FOUR_WEEK_REWARD_OOO: u64 = 420;
+
+// Old tiers to be removed
+// const TIER_ONE_REWARD_RATE: u64 = 5;
+// const TIER_TWO_REWARD_RATE: u64 = 10;
+// const TIER_ONE_THRESHHOLD: i64 = 5;
+
+// Staking period tiers, duration in seconds. Alternative shorter periods for testing purposes in comments
+const STAKING_PERIOD_ONE_WEEK: i64 = 604800;
+// const STAKING_PERIOD_ONE_WEEK: i64 = 10;
+const STAKING_PERIOD_TWO_WEEK: i64 = 1209600;
+// const STAKING_PERIOD_TWO_WEEK: i64 = 20;
+const STAKING_PERIOD_FOUR_WEEK: i64 = 2419200;
+// const STAKING_PERIOD_FOUR_WEEK: i64 = 30;
+
+// Old minimums, to be removed
+// const MINIMUM_STAKING_PERIOD: i64 = 2;
+// const MINIMUM_COLLECTION_PERIOD: i64 = 1;
+
+// Size constants
+const DISCRIMINATOR_LENGTH: usize = 8;
+const PUBLIC_KEY_LENGTH: usize = 32;
+const TIMESTAMP_LENGTH: usize = 8;
 
 #[program]
 pub mod staking {
     use super::*;
-    pub fn stake(ctx: Context<Stake>, _vault_account_bump: u8) -> ProgramResult {
+    pub fn stake(ctx: Context<Stake>, staking_period: u16, is_one_of_one: bool) -> ProgramResult {
 
         let clock: Clock = Clock::get().unwrap();
         let timestamp = clock.unix_timestamp;
-        let earliest_unstake = timestamp + MINIMUM_STAKING_PERIOD;
 
         ctx.accounts.staking_account.staking_token_owner = *ctx.accounts.staking_token_owner.key;
         ctx.accounts
@@ -33,11 +57,31 @@ pub mod staking {
             .to_account_info()
             .key;
         ctx.accounts.staking_account.staking_mint = *ctx.accounts.staking_mint.to_account_info().key;
-        
+
+        let mut unstake = 0;
+
+        if staking_period == 0 {
+            unstake = STAKING_PERIOD_ONE_WEEK;
+        } else if staking_period == 1 {
+            unstake = STAKING_PERIOD_TWO_WEEK;
+        } else if staking_period == 2 {
+            unstake = STAKING_PERIOD_FOUR_WEEK;
+        }
+
+        if is_one_of_one == true {
+            ctx.accounts.staking_account.is_one_of_one = true;
+        } else {
+            ctx.accounts.staking_account.is_one_of_one = false;
+        }
+
         ctx.accounts.staking_account.created = timestamp;
+
         ctx.accounts.staking_account.last_reward_collection = timestamp;
         ctx.accounts.staking_account.total_reward_collected = 0;
-        ctx.accounts.staking_account.earliest_unstake = earliest_unstake;
+
+
+        ctx.accounts.staking_account.staking_period = staking_period;
+        ctx.accounts.staking_account.unstake_date = timestamp + unstake;
 
         let (vault_authority, _vault_authority_bump) =
             Pubkey::find_program_address(&[VAULT_PDA_SEED, &*ctx.accounts.staking_account.to_account_info().key.as_ref(), &*ctx.accounts.staking_mint.to_account_info().key.as_ref()], ctx.program_id);
@@ -62,19 +106,12 @@ pub mod staking {
         let timestamp = clock.unix_timestamp;
         let elapsed: i64 = timestamp - ctx.accounts.staking_account.last_reward_collection;
 
-        if elapsed < MINIMUM_COLLECTION_PERIOD {
-             return Err(ErrorCode::CollectionPeriodTooShort.into())
-        }
-
         let mut amount: u64 = 0;
 
-        if elapsed < TIER_ONE_THRESHHOLD {
-            amount = TIER_ONE_REWARD_RATE * duration;
-        }
-
-        if elapsed > TIER_ONE_THRESHHOLD {
-            amount = TIER_TWO_REWARD_RATE * duration;
-        }
+        // TODO:
+        // Calculate total remaining billable seconds
+        // Calculate portion of reward equivalent to elapsed value
+        // Round up to nearest whole number before issuing amount
 
         token::mint_to(ctx.accounts.into_mint_to_staker(), amount).unwrap();
 
@@ -84,15 +121,59 @@ pub mod staking {
         Ok(())
     }
 
+    pub fn collect_full(ctx: Context<CollectFull>) -> ProgramResult {
+
+        let clock: Clock = Clock::get().unwrap();
+        let timestamp = clock.unix_timestamp;
+
+        if ctx.accounts.staking_account.unstake_date > timestamp {
+             return Err(ErrorCode::TooEarlyToUnstake.into())
+        }
+
+        let mut amount: u64 = 1;
+
+        if ctx.accounts.staking_account.is_one_of_one == true {
+            if ctx.accounts.staking_account.staking_period == 0 {
+                amount = ONE_WEEK_REWARD_OOO;
+            } else if ctx.accounts.staking_account.staking_period == 1 {
+                amount = TWO_WEEK_REWARD_OOO;
+            } else if ctx.accounts.staking_account.staking_period == 2 {
+                amount = FOUR_WEEK_REWARD_OOO;
+            }
+        } else {
+            if ctx.accounts.staking_account.staking_period == 0 {
+                amount = ONE_WEEK_REWARD;
+            } else if ctx.accounts.staking_account.staking_period == 1 {
+                amount = TWO_WEEK_REWARD;
+            } else if ctx.accounts.staking_account.staking_period == 2 {
+                amount = FOUR_WEEK_REWARD;
+            }
+        }
+
+        // NEED TO ROUND TO DAYS OR DIVIDE TOTAL BY BY SECONDS
+        amount = amount - ctx.accounts.staking_account.total_reward_collected;
+
+        token::mint_to(ctx.accounts.into_mint_to_staker(), amount).unwrap();
+
+        ctx.accounts.staking_account.total_reward_collected = ctx.accounts.staking_account.total_reward_collected + amount;
+
+        ctx.accounts.staking_account.full_reward_collected = true;
+
+        Ok(())
+    }
+
 
     pub fn unstake(ctx: Context<Unstake>) -> ProgramResult {
 
         let clock: Clock = Clock::get().unwrap();
         let timestamp = clock.unix_timestamp;
-        let elapsed: i64 = timestamp - ctx.accounts.staking_account.created;
+        
+        if ctx.accounts.staking_account.unstake_date > timestamp {
+             return Err(ErrorCode::TooEarlyToUnstake.into())
+        }
 
-        if elapsed < MINIMUM_STAKING_PERIOD {
-             return Err(ErrorCode::StakingPeriodTooShort.into())
+        if ctx.accounts.staking_account.full_reward_collected == false {
+             return Err(ErrorCode::FullRewardNotCollected.into())
         }
 
         let (_vault_authority, vault_authority_bump) =
@@ -118,11 +199,11 @@ pub mod staking {
 }
 
 #[derive(Accounts)]
-#[instruction(vault_account_bump: u8)]
+#[instruction(staking_period: u16, is_one_of_one: bool)]
 pub struct Stake<'info> {
     
-    #[account(mut, signer)] 
     /// CHECK: this is safe because we have run client-side validation on the wallet initializing the transaction
+    #[account(mut, signer)] 
     pub staking_token_owner: AccountInfo<'info>,
     pub staking_mint: Account<'info, Mint>, 
     #[account(
@@ -132,7 +213,6 @@ pub struct Stake<'info> {
         payer = staking_token_owner,
         token::mint = staking_mint,
         token::authority = staking_token_owner,
-        
     )]
     pub vault_account: Account<'info, TokenAccount>, 
     #[account(
@@ -169,6 +249,7 @@ impl<'info> Stake<'info> {
     }
 }
 
+// TODO: Change to COLLECT EARLY
 #[derive(Accounts)]
 pub struct Collect<'info> {
     /// CHECK: this is safe because the mint authority is stored in an environmental variable
@@ -207,6 +288,36 @@ impl<'info> Collect<'info> {
 }
 
 #[derive(Accounts)]
+pub struct CollectFull<'info> {
+    /// CHECK: this is safe because the mint authority is stored in an environmental variable
+    #[account(signer)]
+    pub reward_mint_authority: AccountInfo<'info>,
+    /// CHECK: this is safe because we have run client-side validation on the wallet initializing the transaction
+    pub staking_token_owner: AccountInfo<'info>,
+    #[account(mut)]
+    pub owner_staking_token_account: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub staking_account: Box<Account<'info, StakeAccount>>,
+    pub staking_mint: Account<'info, Mint>,
+    #[account(mut)]
+    pub reward_mint: Account<'info, Mint>,
+    #[account(mut)]
+    pub owner_reward_token_account: Account<'info, TokenAccount>,
+    pub token_program: Program<'info, Token>,
+}
+
+impl<'info> CollectFull<'info> {
+    fn into_mint_to_staker(&self) -> CpiContext<'_, '_, '_, 'info, MintTo<'info>> {
+        let cpi_accounts = MintTo {
+            mint: self.reward_mint.to_account_info().clone(),
+            to: self.owner_reward_token_account.to_account_info().clone(),
+            authority: self.reward_mint_authority.clone(),
+        };
+        CpiContext::new(self.token_program.to_account_info(), cpi_accounts)
+    }
+}
+
+#[derive(Accounts)]
 pub struct Unstake<'info> {
     /// CHECK: this is safe because the mint authority is stored in an environmental variable
     #[account(mut, signer)] 
@@ -214,7 +325,7 @@ pub struct Unstake<'info> {
     pub staking_mint: Account<'info, Mint>, 
     #[account(mut)] 
     pub vault_account: Account<'info, TokenAccount>,
-    /// CHECK: 
+    /// CHECK: this is safe because it is calculated by the client
     pub vault_authority: AccountInfo<'info>,
     #[account(mut)]
     pub owner_staking_token_account: Account<'info, TokenAccount>,
@@ -265,28 +376,30 @@ pub struct StakeAccount {
     pub created: i64,
     pub last_reward_collection: i64,
     pub total_reward_collected: u64,
-    pub earliest_unstake: i64,
+    pub unstake_date: i64,
+    pub staking_period: u16,
+    pub is_one_of_one: bool,
+    pub full_reward_collected: bool
 }
-
-const DISCRIMINATOR_LENGTH: usize = 8;
-const PUBLIC_KEY_LENGTH: usize = 32;
-const TIMESTAMP_LENGTH: usize = 8;
 
 impl StakeAccount {
     const LEN: usize = DISCRIMINATOR_LENGTH
-        + PUBLIC_KEY_LENGTH // initializer
-        + PUBLIC_KEY_LENGTH // initializer_deposit_token_account
+        + PUBLIC_KEY_LENGTH // owner
+        + PUBLIC_KEY_LENGTH // owner_staking_token_account
         + PUBLIC_KEY_LENGTH // mint
         + TIMESTAMP_LENGTH // created
         + TIMESTAMP_LENGTH // last_reward_collection
         + 8 // total_reward_collected
-        + TIMESTAMP_LENGTH; // earliest_unstake
+        + TIMESTAMP_LENGTH // unstake_date
+        + 32 // staking period
+        + 8 // is one of one
+        + 8; // reward collected
 }
 
 #[error]
 pub enum ErrorCode {
-    #[msg("You have not waited long enough since your last reward collection.")]
-    CollectionPeriodTooShort,
-    #[msg("You have not waited long enough since you staked this token.")]
-    StakingPeriodTooShort
+    #[msg("It is too early to unstaked this token.")]
+    TooEarlyToUnstake,
+    #[msg("The reward has not been collected. Something must have gone wrong.")]
+    FullRewardNotCollected
 }
