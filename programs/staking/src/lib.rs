@@ -35,20 +35,12 @@ const TIMESTAMP_LENGTH: usize = 8;
 #[program]
 pub mod staking {
     use super::*;
+    // Allow user to stake a single NFT
     pub fn stake(ctx: Context<Stake>, staking_period: u16, is_one_of_one: bool) -> ProgramResult {
 
+        // Define variables based on input/time
         let clock: Clock = Clock::get().unwrap();
         let timestamp = clock.unix_timestamp;
-
-        ctx.accounts.staking_account.staking_token_owner = *ctx.accounts.staking_token_owner.key;
-        ctx.accounts
-            .staking_account
-            .owner_staking_token_account = *ctx
-            .accounts
-            .owner_staking_token_account
-            .to_account_info()
-            .key;
-        ctx.accounts.staking_account.staking_mint = *ctx.accounts.staking_mint.to_account_info().key;
 
         let mut unstake: i64 = 0;
 
@@ -59,6 +51,17 @@ pub mod staking {
         } else if staking_period == 2 {
             unstake = STAKING_PERIOD_FOUR_WEEK;
         }
+
+        // Define properties of staking_account account that will be created as a record of the staked token
+        ctx.accounts.staking_account.staking_token_owner = *ctx.accounts.staking_token_owner.key;
+        ctx.accounts
+            .staking_account
+            .owner_staking_token_account = *ctx
+            .accounts
+            .owner_staking_token_account
+            .to_account_info()
+            .key;
+        ctx.accounts.staking_account.staking_mint = *ctx.accounts.staking_mint.to_account_info().key;
 
         if is_one_of_one == true {
             ctx.accounts.staking_account.is_one_of_one = true;
@@ -74,6 +77,7 @@ pub mod staking {
         ctx.accounts.staking_account.staking_period = staking_period;
         ctx.accounts.staking_account.unstake_date = timestamp + unstake;
 
+        // Set authority for staking vault (PDA)
         let (vault_authority, _vault_authority_bump) =
             Pubkey::find_program_address(&[VAULT_PDA_SEED, &*ctx.accounts.staking_account.to_account_info().key.as_ref(), &*ctx.accounts.staking_mint.to_account_info().key.as_ref()], ctx.program_id);
 
@@ -83,6 +87,7 @@ pub mod staking {
             Some(vault_authority),
         )?;
 
+        // Transfer token to PDA
         token::transfer(
             ctx.accounts.into_transfer_to_pda_context(),
             STAKING_AMOUNT,
@@ -91,19 +96,24 @@ pub mod staking {
         Ok(())
     }
 
+    // Allow for collection of rewards over the course of staking period. Must allow at least one day to pass in between collection attempts
     pub fn collect(ctx: Context<Collect>) -> ProgramResult {
 
+        // Define time-related variables
         let clock: Clock = Clock::get().unwrap();
         let timestamp = clock.unix_timestamp;
         let elapsed: i64 = timestamp - ctx.accounts.staking_account.last_reward_collection;
 
+        // Check that minimum collection time has elapsed
         if elapsed < MINIMUM_COLLECTION_PERIOD {
             return Err(ErrorCode::NotEnoughElapsedSinceLastCollection.into())
         }
 
+        // Establish number of full days that have passed since staking/last collection
         let days = elapsed / MINIMUM_COLLECTION_PERIOD;
         let mut amount: u64 = 0;
 
+        // Define the "per diem" rate of the staking period and multiply by "days" to determine amount to be rewarded
         if ctx.accounts.staking_account.is_one_of_one == true {
             if ctx.accounts.staking_account.staking_period == 0 {
                 amount = (ONE_WEEK_REWARD_OOO as u64 / 7) * days as u64;
@@ -122,23 +132,29 @@ pub mod staking {
             }
         }
 
+        // Mint that amount of reward tokens due, and transfer to the user
         token::mint_to(ctx.accounts.into_mint_to_staker(), amount).unwrap();
 
+        // Update the total amount reward for the staked token and the time of the last collection
         ctx.accounts.staking_account.last_reward_collection = timestamp;
         ctx.accounts.staking_account.total_reward_collected = ctx.accounts.staking_account.total_reward_collected + amount;
 
         Ok(())
     }
 
+    // This function is run as the first step of the unstaking process. This ensures that, whether or not the user has collected rewards along the way, that all rewards due to them are issued before the token is unstaked. 
     pub fn collect_full(ctx: Context<CollectFull>) -> ProgramResult {
 
+        // Define time-related variables
         let clock: Clock = Clock::get().unwrap();
         let timestamp = clock.unix_timestamp;
 
+        // Ensure that the staking period has passed
         if ctx.accounts.staking_account.unstake_date > timestamp {
              return Err(ErrorCode::TooEarlyToUnstake.into())
         }
         
+        // Determine the full amount due for the staking period
         let mut amount: u64 = 0;
 
         if ctx.accounts.staking_account.is_one_of_one == true {
@@ -159,23 +175,27 @@ pub mod staking {
             }
         }
 
+        // Subtract any rewards collected along the way from the total reward amount for the staking period
         amount = amount - ctx.accounts.staking_account.total_reward_collected; 
 
+        // Mint the balanace due nd transfer to the user
         token::mint_to(ctx.accounts.into_mint_to_staker(), amount).unwrap();
 
+        // Update the staking_account to show that the full reward amount has been issued
         ctx.accounts.staking_account.total_reward_collected = ctx.accounts.staking_account.total_reward_collected + amount;
-
         ctx.accounts.staking_account.full_reward_collected = true;
 
         Ok(())
     }
 
-
+    // This function is automatically called after successful return of collect_full, and is responsible for unstaking the token, transferring it back to the user, and closing the related staking_account
     pub fn unstake(ctx: Context<Unstake>) -> ProgramResult {
 
+        // Define time-related variables
         let clock: Clock = Clock::get().unwrap();
         let timestamp = clock.unix_timestamp;
         
+        // Ensure that the staking period has passed, and that the full reward has been issued
         if ctx.accounts.staking_account.unstake_date > timestamp {
              return Err(ErrorCode::TooEarlyToUnstake.into())
         }
@@ -184,11 +204,13 @@ pub mod staking {
              return Err(ErrorCode::FullRewardNotCollected.into())
         }
 
+        // Define the vault authority and bump, and set the authority seeds to access the vault (PDA)
         let (_vault_authority, vault_authority_bump) =
             Pubkey::find_program_address(&[VAULT_PDA_SEED, &*ctx.accounts.staking_account.to_account_info().key.as_ref(), &*ctx.accounts.staking_mint.to_account_info().key.as_ref()], ctx.program_id);
 
         let authority_seeds = &[&VAULT_PDA_SEED, &*ctx.accounts.staking_account.to_account_info().key.as_ref(), &*ctx.accounts.staking_mint.to_account_info().key.as_ref(), &[vault_authority_bump]];
 
+        // Transfer the token back to the user and close the staking_account
         token::transfer(
             ctx.accounts
                 .into_transfer_to_initializer_context()
