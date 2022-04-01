@@ -1,8 +1,8 @@
 import * as anchor from '@project-serum/anchor';
 import { Program } from '@project-serum/anchor';
 import { Staking } from '../target/types/staking';
-import { PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID, getMint, getAccount } from '@solana/spl-token';
+import { PublicKey } from '@solana/web3.js';
+import { TOKEN_PROGRAM_ID, getAccount } from '@solana/spl-token';
 import { assert } from 'chai';
 
 import {
@@ -126,23 +126,19 @@ describe('staking', () => {
 
     console.log('attempting to stake token...');
 
-    await program.rpc.stake(
-      vault_account_bump,
-      // new anchor.BN(initializerAmount),
-      {
-        accounts: {
-          stakingTokenOwner: initializerMainAccount.publicKey,
-          stakingMint: tokenPk,
-          vaultAccount: vault_account_pda,
-          ownerStakingTokenAccount: tokenAccount.address,
-          stakingAccount: escroKeypair.publicKey,
-          systemProgram: anchor.web3.SystemProgram.programId,
-          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        },
-        signers: [escroKeypair, initializerMainAccount],
-      }
-    );
+    await program.rpc.stake(0, false, {
+      accounts: {
+        stakingTokenOwner: initializerMainAccount.publicKey,
+        stakingMint: tokenPk,
+        vaultAccount: vault_account_pda,
+        ownerStakingTokenAccount: tokenAccount.address,
+        stakingAccount: escroKeypair.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      },
+      signers: [escroKeypair, initializerMainAccount],
+    });
 
     console.log('token successfuly staked!');
   });
@@ -232,7 +228,7 @@ describe('staking', () => {
         )
       ).value;
 
-      await program.rpc.collect(new anchor.BN(500), {
+      await program.rpc.collect({
         accounts: {
           rewardMintAuthority: rewardMintAuthorityKeypair.publicKey,
           stakingTokenOwner: initializerMainAccount.publicKey,
@@ -273,7 +269,7 @@ describe('staking', () => {
         )
       ).value;
 
-      await program.rpc.collect(new anchor.BN(500), {
+      await program.rpc.collect({
         accounts: {
           rewardMintAuthority: rewardMintAuthorityKeypair.publicKey,
           stakingTokenOwner: payerKeypair.publicKey,
@@ -318,7 +314,7 @@ describe('staking', () => {
         )
       ).value;
 
-      await program.rpc.collect(new anchor.BN(500), {
+      await program.rpc.collect({
         accounts: {
           rewardMintAuthority: rewardMintAuthorityKeypair.publicKey,
           stakingTokenOwner: payerKeypair.publicKey,
@@ -428,7 +424,7 @@ describe('staking', () => {
       )
     ).value;
 
-    await program.rpc.collect(new anchor.BN(500), {
+    await program.rpc.collectFull({
       accounts: {
         rewardMintAuthority: rewardMintAuthorityKeypair.publicKey,
         stakingTokenOwner: initializerMainAccount.publicKey,

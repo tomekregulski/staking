@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, CloseAccount, Mint, Token, SetAuthority, MintTo, TokenAccount, Transfer};
 use spl_token::instruction::AuthorityType;
 
-declare_id!("FvSyVqCPvwVJ8XyNVLb3h4vUV36nr8c26CpF6YyL8zUu");
+declare_id!("5QWdVhYaHiwtXLrbzRwMUmvFJuCL2MHkfza3ro3RuQnE");
 
 
 const VAULT_PDA_SEED: &[u8] = b"vault";
@@ -20,12 +20,12 @@ const TWO_WEEK_REWARD_OOO: u64 = 140;
 const FOUR_WEEK_REWARD_OOO: u64 = 420;
 
 // Staking period tiers, duration in seconds. Alternative shorter periods for testing purposes in comments
-const STAKING_PERIOD_ONE_WEEK: i64 = 604800;
-// const STAKING_PERIOD_ONE_WEEK: i64 = 10;
-const STAKING_PERIOD_TWO_WEEK: i64 = 1209600;
-// const STAKING_PERIOD_TWO_WEEK: i64 = 20;
-const STAKING_PERIOD_FOUR_WEEK: i64 = 2419200;
-// const STAKING_PERIOD_FOUR_WEEK: i64 = 30;
+// const STAKING_PERIOD_ONE_WEEK: i64 = 604800;
+const STAKING_PERIOD_ONE_WEEK: i64 = 1;
+// const STAKING_PERIOD_TWO_WEEK: i64 = 1209600;
+const STAKING_PERIOD_TWO_WEEK: i64 = 20;
+// const STAKING_PERIOD_FOUR_WEEK: i64 = 2419200;
+const STAKING_PERIOD_FOUR_WEEK: i64 = 30;
 
 // Size constants
 const DISCRIMINATOR_LENGTH: usize = 8;
@@ -50,7 +50,7 @@ pub mod staking {
             .key;
         ctx.accounts.staking_account.staking_mint = *ctx.accounts.staking_mint.to_account_info().key;
 
-        let mut unstake = 0;
+        let mut unstake: i64 = 0;
 
         if staking_period == 0 {
             unstake = STAKING_PERIOD_ONE_WEEK;
@@ -70,7 +70,6 @@ pub mod staking {
 
         ctx.accounts.staking_account.last_reward_collection = timestamp;
         ctx.accounts.staking_account.total_reward_collected = 0;
-
 
         ctx.accounts.staking_account.staking_period = staking_period;
         ctx.accounts.staking_account.unstake_date = timestamp + unstake;
@@ -99,7 +98,7 @@ pub mod staking {
         let elapsed: i64 = timestamp - ctx.accounts.staking_account.last_reward_collection;
 
         if elapsed < MINIMUM_COLLECTION_PERIOD {
-            return Err(ErrorCode::TooEarlyToUnstake.into())
+            return Err(ErrorCode::NotEnoughElapsedSinceLastCollection.into())
         }
 
         let days = elapsed / MINIMUM_COLLECTION_PERIOD;
@@ -160,7 +159,7 @@ pub mod staking {
             }
         }
 
-        amount = amount - ctx.accounts.staking_account.total_reward_collected;
+        amount = amount - ctx.accounts.staking_account.total_reward_collected; 
 
         token::mint_to(ctx.accounts.into_mint_to_staker(), amount).unwrap();
 
@@ -210,7 +209,6 @@ pub mod staking {
 #[derive(Accounts)]
 #[instruction(staking_period: u16, is_one_of_one: bool)]
 pub struct Stake<'info> {
-    
     /// CHECK: this is safe because we have run client-side validation on the wallet initializing the transaction
     #[account(mut, signer)] 
     pub staking_token_owner: AccountInfo<'info>,
@@ -258,7 +256,6 @@ impl<'info> Stake<'info> {
     }
 }
 
-// TODO: Change to COLLECT EARLY
 #[derive(Accounts)]
 pub struct Collect<'info> {
     /// CHECK: this is safe because the mint authority is stored in an environmental variable
@@ -407,6 +404,8 @@ impl StakeAccount {
 
 #[error]
 pub enum ErrorCode {
+    #[msg("Not enough time has elapsed since your last collection.")]
+    NotEnoughElapsedSinceLastCollection,
     #[msg("It is too early to unstaked this token.")]
     TooEarlyToUnstake,
     #[msg("The reward has not been collected. Something must have gone wrong.")]

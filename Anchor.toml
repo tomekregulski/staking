@@ -1,7 +1,7 @@
 [features]
 seeds = false
 [programs.devnet]
-staking = "FvSyVqCPvwVJ8XyNVLb3h4vUV36nr8c26CpF6YyL8zUu"
+staking = "5QWdVhYaHiwtXLrbzRwMUmvFJuCL2MHkfza3ro3RuQnE"
 
 [registry]
 url = "https://anchor.projectserum.com"
