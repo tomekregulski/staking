@@ -41,364 +41,364 @@ describe('staking', () => {
     token = ATA[0];
   });
 
-  it('Fails to stake the token from an unauthorized wallet', async () => {
-    try {
-      const ATA = (
-        await provider.connection.getParsedTokenAccountsByOwner(
-          payerKeypair.publicKey as PublicKey,
-          {
-            mint: tokenMintKey as PublicKey,
-          }
-        )
-      ).value;
+  // it('Fails to stake the token from an unauthorized wallet', async () => {
+  //   try {
+  //     const ATA = (
+  //       await provider.connection.getParsedTokenAccountsByOwner(
+  //         payerKeypair.publicKey as PublicKey,
+  //         {
+  //           mint: tokenMintKey as PublicKey,
+  //         }
+  //       )
+  //     ).value;
 
-      const invalidToken = ATA[0];
-      console.log(invalidToken);
+  //     const invalidToken = ATA[0];
+  //     console.log(invalidToken);
 
-      const tokenAccount = await getAccount(
-        provider.connection,
-        invalidToken.pubkey
-      );
+  //     const tokenAccount = await getAccount(
+  //       provider.connection,
+  //       invalidToken.pubkey
+  //     );
 
-      const tokenMintPk = invalidToken.account.data.parsed.info.mint;
-      const tokenPk = new PublicKey(tokenMintPk);
+  //     const tokenMintPk = invalidToken.account.data.parsed.info.mint;
+  //     const tokenPk = new PublicKey(tokenMintPk);
 
-      const vaultKeypair = anchor.web3.Keypair.generate();
+  //     const vaultKeypair = anchor.web3.Keypair.generate();
 
-      const [_vault_account_pda, _vault_account_bump] =
-        await PublicKey.findProgramAddress(
-          [
-            Buffer.from(anchor.utils.bytes.utf8.encode('receipt')),
-            vaultKeypair.publicKey.toBuffer(),
-            tokenPk.toBuffer(),
-          ],
-          program.programId
-        );
+  //     const [_vault_account_pda, _vault_account_bump] =
+  //       await PublicKey.findProgramAddress(
+  //         [
+  //           Buffer.from(anchor.utils.bytes.utf8.encode('receipt')),
+  //           vaultKeypair.publicKey.toBuffer(),
+  //           tokenPk.toBuffer(),
+  //         ],
+  //         program.programId
+  //       );
 
-      const vault_account_pda = _vault_account_pda;
-      const vault_account_bump = _vault_account_bump;
+  //     const vault_account_pda = _vault_account_pda;
+  //     const vault_account_bump = _vault_account_bump;
 
-      console.log('attempting false stake...');
+  //     console.log('attempting false stake...');
 
-      await program.rpc.stake(vault_account_bump, {
-        accounts: {
-          stakingTokenOwner: payerKeypair.publicKey,
-          stakingMint: tokenPk,
-          vaultAccount: vault_account_pda,
-          ownerStakingTokenAccount: tokenAccount.address,
-          stakingAccount: vaultKeypair.publicKey,
-          systemProgram: anchor.web3.SystemProgram.programId,
-          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        },
-        signers: [vaultKeypair, payerKeypair],
-      });
-      // }
+  //     await program.rpc.stake(vault_account_bump, {
+  //       accounts: {
+  //         stakingTokenOwner: payerKeypair.publicKey,
+  //         stakingMint: tokenPk,
+  //         vaultAccount: vault_account_pda,
+  //         ownerStakingTokenAccount: tokenAccount.address,
+  //         stakingAccount: vaultKeypair.publicKey,
+  //         systemProgram: anchor.web3.SystemProgram.programId,
+  //         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+  //         tokenProgram: TOKEN_PROGRAM_ID,
+  //       },
+  //       signers: [vaultKeypair, payerKeypair],
+  //     });
+  //     // }
 
-      console.log('false stake successful');
-    } catch {
-      console.log('false stake failed');
-      assert.ok(true);
-    }
-  });
+  //     console.log('false stake successful');
+  //   } catch {
+  //     console.log('false stake failed');
+  //     assert.ok(true);
+  //   }
+  // });
 
-  it('Stakes the selected token from the owner wallet', async () => {
-    const tokenAccount = await getAccount(provider.connection, token.pubkey);
-    console.log(tokenAccount);
+  // it('Stakes the selected token from the owner wallet', async () => {
+  //   const tokenAccount = await getAccount(provider.connection, token.pubkey);
+  //   console.log(tokenAccount);
 
-    const tokenMintPk = token.account.data.parsed.info.mint;
-    const tokenPk = new PublicKey(tokenMintPk);
+  //   const tokenMintPk = token.account.data.parsed.info.mint;
+  //   const tokenPk = new PublicKey(tokenMintPk);
 
-    const escroKeypair = anchor.web3.Keypair.generate();
+  //   const escroKeypair = anchor.web3.Keypair.generate();
 
-    const [_vault_account_pda, _vault_account_bump] =
-      await PublicKey.findProgramAddress(
-        [
-          Buffer.from(anchor.utils.bytes.utf8.encode('receipt')),
-          escroKeypair.publicKey.toBuffer(),
-          tokenPk.toBuffer(),
-        ],
-        program.programId
-      );
+  //   const [_vault_account_pda, _vault_account_bump] =
+  //     await PublicKey.findProgramAddress(
+  //       [
+  //         Buffer.from(anchor.utils.bytes.utf8.encode('receipt')),
+  //         escroKeypair.publicKey.toBuffer(),
+  //         tokenPk.toBuffer(),
+  //       ],
+  //       program.programId
+  //     );
 
-    const vault_account_pda = _vault_account_pda;
-    const vault_account_bump = _vault_account_bump;
+  //   const vault_account_pda = _vault_account_pda;
+  //   const vault_account_bump = _vault_account_bump;
 
-    console.log('attempting to stake token...');
+  //   console.log('attempting to stake token...');
 
-    await program.rpc.stake(0, false, {
-      accounts: {
-        stakingTokenOwner: initializerMainAccount.publicKey,
-        stakingMint: tokenPk,
-        vaultAccount: vault_account_pda,
-        ownerStakingTokenAccount: tokenAccount.address,
-        stakingAccount: escroKeypair.publicKey,
-        systemProgram: anchor.web3.SystemProgram.programId,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-        tokenProgram: TOKEN_PROGRAM_ID,
-      },
-      signers: [escroKeypair, initializerMainAccount],
-    });
+  //   await program.rpc.stake(0, false, {
+  //     accounts: {
+  //       stakingTokenOwner: initializerMainAccount.publicKey,
+  //       stakingMint: tokenPk,
+  //       vaultAccount: vault_account_pda,
+  //       ownerStakingTokenAccount: tokenAccount.address,
+  //       stakingAccount: escroKeypair.publicKey,
+  //       systemProgram: anchor.web3.SystemProgram.programId,
+  //       rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+  //       tokenProgram: TOKEN_PROGRAM_ID,
+  //     },
+  //     signers: [escroKeypair, initializerMainAccount],
+  //   });
 
-    console.log('token successfuly staked!');
-  });
+  //   console.log('token successfuly staked!');
+  // });
 
-  it('Fails to unstake a token before the minimum duration', async () => {
-    let _allVault = await program.account.stakeAccount.all();
-    let stakedToken = _allVault.filter(
-      (token) =>
-        token.account.stakingMint.toString() === tokenMintKey.toString()
-    );
+  // it('Fails to unstake a token before the minimum duration', async () => {
+  //   let _allVault = await program.account.stakeAccount.all();
+  //   let stakedToken = _allVault.filter(
+  //     (token) =>
+  //       token.account.stakingMint.toString() === tokenMintKey.toString()
+  //   );
 
-    console.log(stakedToken[0].account.created.toString());
-    console.log(
-      Math.floor(Date.now() / 1000) -
-        parseInt(stakedToken[0].account.created.toString())
-    );
+  //   console.log(stakedToken[0].account.created.toString());
+  //   console.log(
+  //     Math.floor(Date.now() / 1000) -
+  //       parseInt(stakedToken[0].account.created.toString())
+  //   );
 
-    try {
-      console.log('attempting unstake...');
+  //   try {
+  //     console.log('attempting unstake...');
 
-      const [_vault_account_pda, _vault_account_bump] =
-        await PublicKey.findProgramAddress(
-          [
-            Buffer.from(anchor.utils.bytes.utf8.encode('receipt')),
-            stakedToken[0].publicKey.toBuffer(),
-            stakedToken[0].account.stakingMint.toBuffer(),
-          ],
-          program.programId
-        );
+  //     const [_vault_account_pda, _vault_account_bump] =
+  //       await PublicKey.findProgramAddress(
+  //         [
+  //           Buffer.from(anchor.utils.bytes.utf8.encode('receipt')),
+  //           stakedToken[0].publicKey.toBuffer(),
+  //           stakedToken[0].account.stakingMint.toBuffer(),
+  //         ],
+  //         program.programId
+  //       );
 
-      const vault_account_pda = _vault_account_pda;
-      const vault_account_bump = _vault_account_bump;
+  //     const vault_account_pda = _vault_account_pda;
+  //     const vault_account_bump = _vault_account_bump;
 
-      const [_vault_authority_pda, _vault_authority_bump] =
-        await PublicKey.findProgramAddress(
-          [
-            Buffer.from(anchor.utils.bytes.utf8.encode('vault')),
-            stakedToken[0].publicKey.toBuffer(),
-            stakedToken[0].account.stakingMint.toBuffer(),
-          ],
-          program.programId
-        );
+  //     const [_vault_authority_pda, _vault_authority_bump] =
+  //       await PublicKey.findProgramAddress(
+  //         [
+  //           Buffer.from(anchor.utils.bytes.utf8.encode('vault')),
+  //           stakedToken[0].publicKey.toBuffer(),
+  //           stakedToken[0].account.stakingMint.toBuffer(),
+  //         ],
+  //         program.programId
+  //       );
 
-      const vault_authority_pda = _vault_authority_pda;
+  //     const vault_authority_pda = _vault_authority_pda;
 
-      await program.rpc.unstake({
-        accounts: {
-          stakingTokenOwner: initializerMainAccount.publicKey,
+  //     await program.rpc.unstake({
+  //       accounts: {
+  //         stakingTokenOwner: initializerMainAccount.publicKey,
 
-          stakingMint: stakedToken[0].account.stakingMint,
-          ownerStakingTokenAccount:
-            stakedToken[0].account.ownerStakingTokenAccount,
-          vaultAccount: vault_account_pda,
-          vaultAuthority: vault_authority_pda,
-          stakingAccount: stakedToken[0].publicKey,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        },
-        signers: [initializerMainAccount],
-      });
+  //         stakingMint: stakedToken[0].account.stakingMint,
+  //         ownerStakingTokenAccount:
+  //           stakedToken[0].account.ownerStakingTokenAccount,
+  //         vaultAccount: vault_account_pda,
+  //         vaultAuthority: vault_authority_pda,
+  //         stakingAccount: stakedToken[0].publicKey,
+  //         tokenProgram: TOKEN_PROGRAM_ID,
+  //       },
+  //       signers: [initializerMainAccount],
+  //     });
 
-      _allVault = await program.account.stakeAccount.all();
+  //     _allVault = await program.account.stakeAccount.all();
 
-      console.log(_allVault);
-      console.log('early unstaking went through');
-      assert.ok(false);
-    } catch {
-      console.log('early unstaking failed');
-      assert.ok(true);
-    }
-  });
+  //     console.log(_allVault);
+  //     console.log('early unstaking went through');
+  //     assert.ok(false);
+  //   } catch {
+  //     console.log('early unstaking failed');
+  //     assert.ok(true);
+  //   }
+  // });
 
-  it('Prevents a user from collecting rewards before the minimum duration', async () => {
-    console.log('attempting early reward collection');
-    let _allVault = await program.account.stakeAccount.all();
-    let selectedToken = _allVault.filter(
-      (token) =>
-        token.account.stakingMint.toString() === tokenMintKey.toString()
-    );
+  // it('Prevents a user from collecting rewards before the minimum duration', async () => {
+  //   console.log('attempting early reward collection');
+  //   let _allVault = await program.account.stakeAccount.all();
+  //   let selectedToken = _allVault.filter(
+  //     (token) =>
+  //       token.account.stakingMint.toString() === tokenMintKey.toString()
+  //   );
 
-    try {
-      let retrievedRewardAta = (
-        await provider.connection.getParsedTokenAccountsByOwner(
-          ownerWalletKeypair.publicKey as PublicKey,
-          {
-            mint: rewardMintPk as PublicKey,
-          }
-        )
-      ).value;
+  //   try {
+  //     let retrievedRewardAta = (
+  //       await provider.connection.getParsedTokenAccountsByOwner(
+  //         ownerWalletKeypair.publicKey as PublicKey,
+  //         {
+  //           mint: rewardMintPk as PublicKey,
+  //         }
+  //       )
+  //     ).value;
 
-      await program.rpc.collect({
-        accounts: {
-          rewardMintAuthority: rewardMintAuthorityKeypair.publicKey,
-          stakingTokenOwner: initializerMainAccount.publicKey,
-          ownerStakingTokenAccount:
-            selectedToken[0].account.ownerStakingTokenAccount,
-          stakingAccount: selectedToken[0].publicKey,
-          stakingMint: selectedToken[0].account.stakingMint,
-          rewardMint: rewardMintPk,
-          ownerRewardTokenAccount: retrievedRewardAta[0].pubkey,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        },
-      });
+  //     await program.rpc.collect({
+  //       accounts: {
+  //         rewardMintAuthority: rewardMintAuthorityKeypair.publicKey,
+  //         stakingTokenOwner: initializerMainAccount.publicKey,
+  //         ownerStakingTokenAccount:
+  //           selectedToken[0].account.ownerStakingTokenAccount,
+  //         stakingAccount: selectedToken[0].publicKey,
+  //         stakingMint: selectedToken[0].account.stakingMint,
+  //         rewardMint: rewardMintPk,
+  //         ownerRewardTokenAccount: retrievedRewardAta[0].pubkey,
+  //         tokenProgram: TOKEN_PROGRAM_ID,
+  //       },
+  //     });
 
-      console.log('early reward collection went through');
-      assert.ok(false);
-    } catch {
-      console.log('early reward collection failed');
-      assert.ok(true);
-    }
-  });
+  //     console.log('early reward collection went through');
+  //     assert.ok(false);
+  //   } catch {
+  //     console.log('early reward collection failed');
+  //     assert.ok(true);
+  //   }
+  // });
 
-  it('Fails to distributes rewards to an unrelated public key', async () => {
-    try {
-      console.log('false public key attempting to collect rewards...');
+  // it('Fails to distributes rewards to an unrelated public key', async () => {
+  //   try {
+  //     console.log('false public key attempting to collect rewards...');
 
-      let _allVault = await program.account.stakeAccount.all();
-      let selectedToken = _allVault.filter(
-        (token) =>
-          token.account.stakingMint.toString() === tokenMintKey.toString()
-      );
+  //     let _allVault = await program.account.stakeAccount.all();
+  //     let selectedToken = _allVault.filter(
+  //       (token) =>
+  //         token.account.stakingMint.toString() === tokenMintKey.toString()
+  //     );
 
-      let retrievedRewardAta = (
-        await provider.connection.getParsedTokenAccountsByOwner(
-          payerKeypair.publicKey as PublicKey,
-          {
-            mint: rewardMintPk as PublicKey,
-          }
-        )
-      ).value;
+  //     let retrievedRewardAta = (
+  //       await provider.connection.getParsedTokenAccountsByOwner(
+  //         payerKeypair.publicKey as PublicKey,
+  //         {
+  //           mint: rewardMintPk as PublicKey,
+  //         }
+  //       )
+  //     ).value;
 
-      await program.rpc.collect({
-        accounts: {
-          rewardMintAuthority: rewardMintAuthorityKeypair.publicKey,
-          stakingTokenOwner: payerKeypair.publicKey,
-          ownerStakingTokenAccount:
-            selectedToken[0].account.ownerStakingTokenAccount,
-          stakingAccount: selectedToken[0].publicKey,
-          stakingMint: selectedToken[0].account.stakingMint,
-          rewardMint: rewardMintPk,
-          ownerRewardTokenAccount: retrievedRewardAta[0].pubkey,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        },
-      });
+  //     await program.rpc.collect({
+  //       accounts: {
+  //         rewardMintAuthority: rewardMintAuthorityKeypair.publicKey,
+  //         stakingTokenOwner: payerKeypair.publicKey,
+  //         ownerStakingTokenAccount:
+  //           selectedToken[0].account.ownerStakingTokenAccount,
+  //         stakingAccount: selectedToken[0].publicKey,
+  //         stakingMint: selectedToken[0].account.stakingMint,
+  //         rewardMint: rewardMintPk,
+  //         ownerRewardTokenAccount: retrievedRewardAta[0].pubkey,
+  //         tokenProgram: TOKEN_PROGRAM_ID,
+  //       },
+  //     });
 
-      console.log(
-        "false public key was able to collect someone else's rewards"
-      );
-      assert.ok(false);
-    } catch {
-      console.log('false reward collection #1 failed');
-      assert.ok(true);
-    }
-  });
+  //     console.log(
+  //       "false public key was able to collect someone else's rewards"
+  //     );
+  //     assert.ok(false);
+  //   } catch {
+  //     console.log('false reward collection #1 failed');
+  //     assert.ok(true);
+  //   }
+  // });
 
-  it('Fails to distributes rewards to an unrelated public key with all other info correct', async () => {
-    try {
-      console.log(
-        'false public key with more information attempting to collect rewards...'
-      );
+  // it('Fails to distributes rewards to an unrelated public key with all other info correct', async () => {
+  //   try {
+  //     console.log(
+  //       'false public key with more information attempting to collect rewards...'
+  //     );
 
-      let _allVault = await program.account.stakeAccount.all();
-      let selectedToken = _allVault.filter(
-        (token) =>
-          token.account.stakingMint.toString() === tokenMintKey.toString()
-      );
+  //     let _allVault = await program.account.stakeAccount.all();
+  //     let selectedToken = _allVault.filter(
+  //       (token) =>
+  //         token.account.stakingMint.toString() === tokenMintKey.toString()
+  //     );
 
-      let retrievedRewardAta = (
-        await provider.connection.getParsedTokenAccountsByOwner(
-          initializerMainAccount.publicKey as PublicKey,
-          {
-            mint: rewardMintPk as PublicKey,
-          }
-        )
-      ).value;
+  //     let retrievedRewardAta = (
+  //       await provider.connection.getParsedTokenAccountsByOwner(
+  //         initializerMainAccount.publicKey as PublicKey,
+  //         {
+  //           mint: rewardMintPk as PublicKey,
+  //         }
+  //       )
+  //     ).value;
 
-      await program.rpc.collect({
-        accounts: {
-          rewardMintAuthority: rewardMintAuthorityKeypair.publicKey,
-          stakingTokenOwner: payerKeypair.publicKey,
-          ownerStakingTokenAccount:
-            selectedToken[0].account.ownerStakingTokenAccount,
-          stakingAccount: selectedToken[0].publicKey,
-          stakingMint: selectedToken[0].account.stakingMint,
-          rewardMint: rewardMintPk,
-          ownerRewardTokenAccount: retrievedRewardAta[0].pubkey,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        },
-      });
+  //     await program.rpc.collect({
+  //       accounts: {
+  //         rewardMintAuthority: rewardMintAuthorityKeypair.publicKey,
+  //         stakingTokenOwner: payerKeypair.publicKey,
+  //         ownerStakingTokenAccount:
+  //           selectedToken[0].account.ownerStakingTokenAccount,
+  //         stakingAccount: selectedToken[0].publicKey,
+  //         stakingMint: selectedToken[0].account.stakingMint,
+  //         rewardMint: rewardMintPk,
+  //         ownerRewardTokenAccount: retrievedRewardAta[0].pubkey,
+  //         tokenProgram: TOKEN_PROGRAM_ID,
+  //       },
+  //     });
 
-      console.log(
-        "false public key with more information was able to collect someone else's rewards"
-      );
-      assert.ok(false);
-    } catch {
-      console.log('false reward collection #2 failed');
-      assert.ok(true);
-    }
-  });
+  //     console.log(
+  //       "false public key with more information was able to collect someone else's rewards"
+  //     );
+  //     assert.ok(false);
+  //   } catch {
+  //     console.log('false reward collection #2 failed');
+  //     assert.ok(true);
+  //   }
+  // });
 
-  it('Fails to unstake a token staked by someone else', async () => {
-    try {
-      let _allVault = await program.account.stakeAccount.all();
-      let stakedToken = _allVault.filter(
-        (token) =>
-          token.account.stakingMint.toString() === tokenMintKey.toString()
-      );
+  // it('Fails to unstake a token staked by someone else', async () => {
+  //   try {
+  //     let _allVault = await program.account.stakeAccount.all();
+  //     let stakedToken = _allVault.filter(
+  //       (token) =>
+  //         token.account.stakingMint.toString() === tokenMintKey.toString()
+  //     );
 
-      console.log(
-        "false public key attempting unstake someone else's token..."
-      );
+  //     console.log(
+  //       "false public key attempting unstake someone else's token..."
+  //     );
 
-      const [_vault_account_pda, _vault_account_bump] =
-        await PublicKey.findProgramAddress(
-          [
-            Buffer.from(anchor.utils.bytes.utf8.encode('receipt')),
-            stakedToken[0].publicKey.toBuffer(),
-            stakedToken[0].account.stakingMint.toBuffer(),
-          ],
-          program.programId
-        );
+  //     const [_vault_account_pda, _vault_account_bump] =
+  //       await PublicKey.findProgramAddress(
+  //         [
+  //           Buffer.from(anchor.utils.bytes.utf8.encode('receipt')),
+  //           stakedToken[0].publicKey.toBuffer(),
+  //           stakedToken[0].account.stakingMint.toBuffer(),
+  //         ],
+  //         program.programId
+  //       );
 
-      const vault_account_pda = _vault_account_pda;
-      const vault_account_bump = _vault_account_bump;
+  //     const vault_account_pda = _vault_account_pda;
+  //     const vault_account_bump = _vault_account_bump;
 
-      const [_vault_authority_pda, _vault_authority_bump] =
-        await PublicKey.findProgramAddress(
-          [
-            Buffer.from(anchor.utils.bytes.utf8.encode('vault')),
-            stakedToken[0].publicKey.toBuffer(),
-            stakedToken[0].account.stakingMint.toBuffer(),
-          ],
-          program.programId
-        );
+  //     const [_vault_authority_pda, _vault_authority_bump] =
+  //       await PublicKey.findProgramAddress(
+  //         [
+  //           Buffer.from(anchor.utils.bytes.utf8.encode('vault')),
+  //           stakedToken[0].publicKey.toBuffer(),
+  //           stakedToken[0].account.stakingMint.toBuffer(),
+  //         ],
+  //         program.programId
+  //       );
 
-      const vault_authority_pda = _vault_authority_pda;
+  //     const vault_authority_pda = _vault_authority_pda;
 
-      await program.rpc.unstake({
-        accounts: {
-          stakingTokenOwner: payerKeypair.publicKey,
+  //     await program.rpc.unstake({
+  //       accounts: {
+  //         stakingTokenOwner: payerKeypair.publicKey,
 
-          stakingMint: stakedToken[0].account.stakingMint,
-          ownerStakingTokenAccount:
-            stakedToken[0].account.ownerStakingTokenAccount,
-          vaultAccount: vault_account_pda,
-          vaultAuthority: vault_authority_pda,
-          stakingAccount: stakedToken[0].publicKey,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        },
-        signers: [payerKeypair],
-      });
+  //         stakingMint: stakedToken[0].account.stakingMint,
+  //         ownerStakingTokenAccount:
+  //           stakedToken[0].account.ownerStakingTokenAccount,
+  //         vaultAccount: vault_account_pda,
+  //         vaultAuthority: vault_authority_pda,
+  //         stakingAccount: stakedToken[0].publicKey,
+  //         tokenProgram: TOKEN_PROGRAM_ID,
+  //       },
+  //       signers: [payerKeypair],
+  //     });
 
-      _allVault = await program.account.stakeAccount.all();
+  //     _allVault = await program.account.stakeAccount.all();
 
-      console.log(_allVault);
-      console.log('false unstake successful');
-    } catch {
-      console.log('false unstake failed');
-      assert.ok(true);
-    }
-  });
+  //     console.log(_allVault);
+  //     console.log('false unstake successful');
+  //   } catch {
+  //     console.log('false unstake failed');
+  //     assert.ok(true);
+  //   }
+  // });
 
   it('Allows a user to collect rewards after the minimum duration passes', async () => {
     console.log('attempting distribution...');
