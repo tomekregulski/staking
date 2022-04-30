@@ -325,7 +325,7 @@ pub struct Stake<'info> {
     )]
     pub owner_staking_token_account: Account<'info, TokenAccount>,
     pub owner_reward_token_account: Account<'info, TokenAccount>,
-    #[account(init, payer = staking_token_owner, space = 8 + StakeAccount::LEN)]
+    #[account(init, payer = staking_token_owner, space = StakeAccount::LEN)]
     pub staking_account: Box<Account<'info, StakeAccount>>,
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
