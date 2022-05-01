@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, CloseAccount, Mint, Token, SetAuthority, MintTo, TokenAccount, Transfer};
 use spl_token::instruction::AuthorityType;
+use solana_program::pubkey;
 
 declare_id!("5QWdVhYaHiwtXLrbzRwMUmvFJuCL2MHkfza3ro3RuQnE");
 
@@ -33,11 +34,11 @@ const PUBLIC_KEY_LENGTH: usize = 32;
 const TIMESTAMP_LENGTH: usize = 8;
 
 // Mint Information
-const MINT_AUTHORITY_PUBLIC_KEY: &str = "3iJqzWcBEmjrvDKuWMAzgKnfqnWbqcaQc9kvYbHJg1gf";
-const MINT_ADDRESS: &str = "MAGf4MnUUkkAUUdiYbNFcDnE4EBGHJYLk9foJ2ae7BV";
+// const MINT_AUTHORITY_PUBLIC_KEY: &str = "3iJqzWcBEmjrvDKuWMAzgKnfqnWbqcaQc9kvYbHJg1gf";
+// const MINT_ADDRESS: &str = "MAGf4MnUUkkAUUdiYbNFcDnE4EBGHJYLk9foJ2ae7BV";
 // This might be a better way, but Anchor is not recognizing the macro
-// const MINT_AUTHORITY_PUBLIC_KEY: Pubkey = pubkey!("3iJqzWcBEmjrvDKuWMAzgKnfqnWbqcaQc9kvYbHJg1gf"); 
-// const MINT_ADDRESS: Pubkey = pubkey!("MAGf4MnUUkkAUUdiYbNFcDnE4EBGHJYLk9foJ2ae7BV");
+const MINT_AUTHORITY_PUBLIC_KEY: Pubkey = pubkey!("3iJqzWcBEmjrvDKuWMAzgKnfqnWbqcaQc9kvYbHJg1gf"); 
+const MINT_ADDRESS: Pubkey = pubkey!("MAGf4MnUUkkAUUdiYbNFcDnE4EBGHJYLk9foJ2ae7BV");
 
 #[program]
 pub mod staking {
@@ -358,7 +359,7 @@ impl<'info> Stake<'info> {
 pub struct Collect<'info> {
     /// CHECK: this is safe because the incoming mint authority is being compared with the stored constant
     #[account(
-        constraint = *&reward_mint_authority.to_account_info().key.to_string() == MINT_AUTHORITY_PUBLIC_KEY,
+        constraint = *reward_mint_authority.to_account_info().key == MINT_AUTHORITY_PUBLIC_KEY,
     )]
     pub reward_mint_authority: AccountInfo<'info>,
     #[account()]
@@ -377,7 +378,7 @@ pub struct Collect<'info> {
     // This is required to be passed in as an added layer of validation to be checked against the staking account
     pub staking_mint: Account<'info, Mint>,
     #[account(
-        constraint = *&reward_mint.to_account_info().key.to_string() == MINT_ADDRESS,
+        constraint = *reward_mint.to_account_info().key == MINT_ADDRESS,
     )]
     pub reward_mint: Account<'info, Mint>,
     #[account(
@@ -402,7 +403,7 @@ impl<'info> Collect<'info> {
 pub struct CollectFull<'info> {
     /// CHECK: this is safe because the incoming mint authority is being compared with the stored constant
     #[account(mut,
-        constraint = *&reward_mint_authority.to_account_info().key.to_string() == MINT_AUTHORITY_PUBLIC_KEY,
+        constraint = *reward_mint_authority.to_account_info().key == MINT_AUTHORITY_PUBLIC_KEY,
     )]
     pub reward_mint_authority: AccountInfo<'info>,
     #[account()]
@@ -421,7 +422,7 @@ pub struct CollectFull<'info> {
     // This is required to be passed in as an added layer of validation to be checked against the staking account
     pub staking_mint: Account<'info, Mint>,
     #[account(
-        constraint = *&reward_mint.to_account_info().key.to_string() == MINT_ADDRESS,
+        constraint = *reward_mint.to_account_info().key == MINT_ADDRESS,
     )]
     pub reward_mint: Account<'info, Mint>,
     #[account(
