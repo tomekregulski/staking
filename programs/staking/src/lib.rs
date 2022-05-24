@@ -542,7 +542,6 @@ pub struct StakeAccount {
     pub last_reward_collection: i64,
     pub total_reward_collected: i64,
     pub owner_reward_token_account: Pubkey,
-    pub is_v2: bool
 }
 
 impl StakeAccount {
@@ -558,7 +557,6 @@ impl StakeAccount {
         + 32 // staking period
         + 1 // is one of one
         + 8 // reward collected
-        + 1; // is_v2
 }
 
 #[error]
