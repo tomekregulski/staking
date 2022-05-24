@@ -34,15 +34,18 @@ const PUBLIC_KEY_LENGTH: usize = 32;
 const TIMESTAMP_LENGTH: usize = 8;
 
 // Mint Information
-// const MINT_AUTHORITY_PUBLIC_KEY: &str = "3iJqzWcBEmjrvDKuWMAzgKnfqnWbqcaQc9kvYbHJg1gf";
-// const MINT_ADDRESS: &str = "MAGf4MnUUkkAUUdiYbNFcDnE4EBGHJYLk9foJ2ae7BV";
-// This might be a better way, but Anchor is not recognizing the macro
-const MINT_AUTHORITY_PUBLIC_KEY: Pubkey = pubkey!("3iJqzWcBEmjrvDKuWMAzgKnfqnWbqcaQc9kvYbHJg1gf"); 
+// const MINT_AUTHORITY_PUBLIC_KEY: Pubkey = pubkey!("3iJqzWcBEmjrvDKuWMAzgKnfqnWbqcaQc9kvYbHJg1gf"); // No longer necessary
 const MINT_ADDRESS: Pubkey = pubkey!("MAGf4MnUUkkAUUdiYbNFcDnE4EBGHJYLk9foJ2ae7BV");
+
+// Admin for PDA initialization - Below address is for example only
+const AUTHORITY_INIT: Pubkey = pubkey!("EuMw7xW3yW3ZsiVEdRZjtJhqNNA8ALXwqCCsAuAUNYjR");
 
 #[program]
 pub mod staking {
     use super::*;
+    pub fn init_mint_authority(ctx: Context<AuthorityInit>) -> ProgramResult {
+        Ok(())
+    }
     // Allow user to stake a single NFT
     pub fn stake(ctx: Context<Stake>, staking_period: u16, is_one_of_one: bool) -> ProgramResult {
 
@@ -177,6 +180,7 @@ pub mod staking {
 
         // Mint that amount of reward tokens due, and transfer to the user
         token::mint_to(ctx.accounts.into_mint_to_staker(), amount as u64).unwrap();
+        // token::transfer(ctx.accounts.into_transfer_reward_to_staker(), amount as u64).unwrap();
 
         // Update the total amount reward for the staked token and the time of the last collection
         ctx.accounts.staking_account.last_reward_collection = timestamp;
@@ -306,6 +310,28 @@ pub mod staking {
 }
 
 #[derive(Accounts)]
+pub struct AuthorityInit<'info> {
+    #[account(
+        init,
+        seeds = [b"authority".as_ref(), reward_mint.key().as_ref()],
+        bump,
+        payer = admin,
+        space = 8 + 8,
+    )]
+    pub mint_authority: AccountInfo<'info>,
+    #[account(
+        constraint = *reward_mint.to_account_info().key == MINT_ADDRESS,
+    )]
+    pub reward_mint: Account<'info, Mint>,
+    #[account(
+        constraint = *admin.to_account_info().key == AUTHORITY_INIT,
+    )]
+    pub admin: Signer<'info>,
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
+}
+
+#[derive(Accounts)]
 #[instruction(staking_period: u16, is_one_of_one: bool)]
 pub struct Stake<'info> {
     #[account(mut)] 
@@ -357,9 +383,10 @@ impl<'info> Stake<'info> {
 
 #[derive(Accounts)]
 pub struct Collect<'info> {
-    /// CHECK: this is safe because the incoming mint authority is being compared with the stored constant
+    /// CHECK: this is safe because it is a PDA bound to this program
     #[account(
-        constraint = *reward_mint_authority.to_account_info().key == MINT_AUTHORITY_PUBLIC_KEY,
+        seeds = [b"authority".as_ref(), reward_mint.key().as_ref()],
+        bump,
     )]
     pub reward_mint_authority: AccountInfo<'info>,
     #[account()]
@@ -397,13 +424,22 @@ impl<'info> Collect<'info> {
         };
         CpiContext::new(self.token_program.to_account_info(), cpi_accounts)
     }
+    // fn into_transfer_reward_to_staker(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
+    //     let cpi_accounts = Transfer {
+    //         from: self.reward_mint.to_account_info().clone(),
+    //         to: self.owner_reward_token_account.to_account_info().clone(),
+    //         authority: self.reward_mint_authority.to_account_info().clone(),
+    //     };
+    //     CpiContext::new(self.token_program.to_account_info(), cpi_accounts)
+    // }
 }
 
 #[derive(Accounts)]
 pub struct CollectFull<'info> {
-    /// CHECK: this is safe because the incoming mint authority is being compared with the stored constant
-    #[account(mut,
-        constraint = *reward_mint_authority.to_account_info().key == MINT_AUTHORITY_PUBLIC_KEY,
+    /// CHECK: this is safe because it is a PDA bound to this program
+    #[account(
+        seeds = [b"authority".as_ref(), reward_mint.key().as_ref()],
+        bump,
     )]
     pub reward_mint_authority: AccountInfo<'info>,
     #[account()]
@@ -497,15 +533,16 @@ impl<'info> Unstake<'info> {
 pub struct StakeAccount {
     pub staking_token_owner: Pubkey,
     pub owner_staking_token_account: Pubkey,
-    pub owner_reward_token_account: Pubkey,
     pub staking_mint: Pubkey,
     pub created: i64,
-    pub last_reward_collection: i64,
-    pub total_reward_collected: i64,
     pub unstake_date: i64,
     pub staking_period: u16,
     pub is_one_of_one: bool,
-    pub full_reward_collected: bool
+    pub full_reward_collected: bool,
+    pub last_reward_collection: i64,
+    pub total_reward_collected: i64,
+    pub owner_reward_token_account: Pubkey,
+    pub is_v2: bool
 }
 
 impl StakeAccount {
@@ -516,11 +553,12 @@ impl StakeAccount {
         + PUBLIC_KEY_LENGTH // mint
         + TIMESTAMP_LENGTH // created
         + TIMESTAMP_LENGTH // last_reward_collection
-        + 8 // total_reward_collected
+        + 1 // total_reward_collected
         + TIMESTAMP_LENGTH // unstake_date
         + 32 // staking period
-        + 8 // is one of one
-        + 8; // reward collected
+        + 1 // is one of one
+        + 8 // reward collected
+        + 1; // is_v2
 }
 
 #[error]
