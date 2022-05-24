@@ -556,7 +556,7 @@ impl StakeAccount {
         + TIMESTAMP_LENGTH // unstake_date
         + 32 // staking period
         + 1 // is one of one
-        + 8 // reward collected
+        + 8; // reward collected
 }
 
 #[error]
