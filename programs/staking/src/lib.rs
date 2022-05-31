@@ -5,10 +5,11 @@ use solana_program::pubkey;
 
 declare_id!("5QWdVhYaHiwtXLrbzRwMUmvFJuCL2MHkfza3ro3RuQnE");
 
-
+const MINT_AUTHORITY_PDA_SEED: &[u8] = b"authority";
 const VAULT_PDA_SEED: &[u8] = b"vault";
 const STAKING_AMOUNT: u64 = 1;
 const MINIMUM_COLLECTION_PERIOD: i64 = 86400; // 1 day in seconds
+// const MINIMUM_COLLECTION_PERIOD: i64 = 10; // testing purposes
 
 // Reward tiers for standard collection
 const ONE_WEEK_REWARD: i64 = 35;
@@ -21,12 +22,12 @@ const TWO_WEEK_REWARD_OOO: i64 = 140;
 const FOUR_WEEK_REWARD_OOO: i64 = 420;
 
 // Staking period tiers, duration in seconds. Alternative shorter periods for testing purposes in comments
-// const STAKING_PERIOD_ONE_WEEK: i64 = 604800;
-const STAKING_PERIOD_ONE_WEEK: i64 = 60;
-// const STAKING_PERIOD_TWO_WEEK: i64 = 1209600;
-const STAKING_PERIOD_TWO_WEEK: i64 = 20;
-// const STAKING_PERIOD_FOUR_WEEK: i64 = 2419200;
-const STAKING_PERIOD_FOUR_WEEK: i64 = 30;
+const STAKING_PERIOD_ONE_WEEK: i64 = 604800;
+// const STAKING_PERIOD_ONE_WEEK: i64 = 120; // testing purposes
+const STAKING_PERIOD_TWO_WEEK: i64 = 1209600;
+// const STAKING_PERIOD_TWO_WEEK: i64 = 240; // testing purposes
+const STAKING_PERIOD_FOUR_WEEK: i64 = 2419200;
+// const STAKING_PERIOD_FOUR_WEEK: i64 = 500; // testing purposes
 
 // Size constants
 const DISCRIMINATOR_LENGTH: usize = 8;
@@ -43,7 +44,8 @@ const AUTHORITY_INIT: Pubkey = pubkey!("EuMw7xW3yW3ZsiVEdRZjtJhqNNA8ALXwqCCsAuAU
 #[program]
 pub mod staking {
     use super::*;
-    pub fn init_mint_authority(ctx: Context<AuthorityInit>) -> ProgramResult {
+    // Create PDA that will be used as the Mint Authority for the Reward Token.
+    pub fn init_mint_authority(_ctx: Context<AuthorityInit>) -> ProgramResult {
         Ok(())
     }
     // Allow user to stake a single NFT
@@ -178,9 +180,15 @@ pub mod staking {
             amount = full_amount - ctx.accounts.staking_account.total_reward_collected;
         }
 
-        // Mint that amount of reward tokens due, and transfer to the user
-        token::mint_to(ctx.accounts.into_mint_to_staker(), amount as u64).unwrap();
-        // token::transfer(ctx.accounts.into_transfer_reward_to_staker(), amount as u64).unwrap();
+        // Find the PDA/bump and set the signature
+        let (_mint_authority, mint_authority_bump) =
+            Pubkey::find_program_address(&[MINT_AUTHORITY_PDA_SEED, &*ctx.accounts.reward_mint.to_account_info().key.as_ref()], ctx.program_id);
+
+        let seeds = &[&MINT_AUTHORITY_PDA_SEED, &*ctx.accounts.reward_mint.to_account_info().key.as_ref(), &[mint_authority_bump]];
+        let authority_seeds = [&seeds[..]];
+
+        // Mint the balanace due nd transfer to the user
+        token::mint_to(ctx.accounts.into_mint_to_staker().with_signer(&authority_seeds), amount as u64).unwrap();
 
         // Update the total amount reward for the staked token and the time of the last collection
         ctx.accounts.staking_account.last_reward_collection = timestamp;
@@ -257,8 +265,15 @@ pub mod staking {
         // Subtract any rewards collected along the way from the total reward amount for the staking period
         amount = amount - ctx.accounts.staking_account.total_reward_collected; 
 
+        // Find the PDA/bump and set the signature
+        let (_mint_authority, mint_authority_bump) =
+            Pubkey::find_program_address(&[MINT_AUTHORITY_PDA_SEED, &*ctx.accounts.reward_mint.to_account_info().key.as_ref()], ctx.program_id);
+
+        let seeds = &[&MINT_AUTHORITY_PDA_SEED, &*ctx.accounts.reward_mint.to_account_info().key.as_ref(), &[mint_authority_bump]];
+        let authority_seeds = [&seeds[..]];
+
         // Mint the balanace due nd transfer to the user
-        token::mint_to(ctx.accounts.into_mint_to_staker(), amount as u64).unwrap();
+        token::mint_to(ctx.accounts.into_mint_to_staker().with_signer(&authority_seeds), amount as u64).unwrap();
 
         // Update the staking_account to show that the full reward amount has been issued
         ctx.accounts.staking_account.total_reward_collected = ctx.accounts.staking_account.total_reward_collected + amount;
@@ -324,6 +339,7 @@ pub struct AuthorityInit<'info> {
     )]
     pub reward_mint: Account<'info, Mint>,
     #[account(
+        mut,
         constraint = *admin.to_account_info().key == AUTHORITY_INIT,
     )]
     pub admin: Signer<'info>,
@@ -385,11 +401,12 @@ impl<'info> Stake<'info> {
 pub struct Collect<'info> {
     /// CHECK: this is safe because it is a PDA bound to this program
     #[account(
+        mut,
         seeds = [b"authority".as_ref(), reward_mint.key().as_ref()],
         bump,
     )]
     pub reward_mint_authority: AccountInfo<'info>,
-    #[account()]
+    #[account(mut)]
     pub staking_token_owner: Signer<'info>,
     #[account(
         constraint = staking_account.owner_staking_token_account == *owner_staking_token_account.to_account_info().key,
@@ -409,6 +426,7 @@ pub struct Collect<'info> {
     )]
     pub reward_mint: Account<'info, Mint>,
     #[account(
+        mut,
         constraint = staking_account.owner_reward_token_account == *owner_reward_token_account.to_account_info().key,
     )]
     pub owner_reward_token_account: Account<'info, TokenAccount>,
@@ -424,25 +442,18 @@ impl<'info> Collect<'info> {
         };
         CpiContext::new(self.token_program.to_account_info(), cpi_accounts)
     }
-    // fn into_transfer_reward_to_staker(&self) -> CpiContext<'_, '_, '_, 'info, Transfer<'info>> {
-    //     let cpi_accounts = Transfer {
-    //         from: self.reward_mint.to_account_info().clone(),
-    //         to: self.owner_reward_token_account.to_account_info().clone(),
-    //         authority: self.reward_mint_authority.to_account_info().clone(),
-    //     };
-    //     CpiContext::new(self.token_program.to_account_info(), cpi_accounts)
-    // }
 }
 
 #[derive(Accounts)]
 pub struct CollectFull<'info> {
     /// CHECK: this is safe because it is a PDA bound to this program
     #[account(
+        mut,
         seeds = [b"authority".as_ref(), reward_mint.key().as_ref()],
         bump,
     )]
     pub reward_mint_authority: AccountInfo<'info>,
-    #[account()]
+    #[account(mut)]
     pub staking_token_owner: Signer<'info>,
     #[account(
         constraint = staking_account.owner_staking_token_account == *owner_staking_token_account.to_account_info().key,
@@ -462,6 +473,7 @@ pub struct CollectFull<'info> {
     )]
     pub reward_mint: Account<'info, Mint>,
     #[account(
+        mut,
         constraint = staking_account.owner_reward_token_account == *owner_reward_token_account.to_account_info().key,
     )]
     pub owner_reward_token_account: Account<'info, TokenAccount>,
