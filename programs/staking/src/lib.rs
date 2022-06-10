@@ -227,7 +227,6 @@ pub mod staking {
         }
         
         // Determine the full amount due for the staking period
-        let mut amount: i64 = 0;
         let mut full_amount: i64 = 0;
 
         if ctx.accounts.staking_account.is_one_of_one == true {
@@ -253,7 +252,7 @@ pub mod staking {
         }
 
         // Subtract any rewards collected along the way from the total reward amount for the staking period
-        amount = full_amount - ctx.accounts.staking_account.total_reward_collected; 
+        let amount: i64 = full_amount - ctx.accounts.staking_account.total_reward_collected; 
 
         // Find the PDA/bump and set the signature
         let (_mint_authority, mint_authority_bump) =
