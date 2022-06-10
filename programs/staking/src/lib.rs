@@ -7,6 +7,7 @@ declare_id!("5QWdVhYaHiwtXLrbzRwMUmvFJuCL2MHkfza3ro3RuQnE");
 
 const MINT_AUTHORITY_PDA_SEED: &[u8] = b"authority";
 const VAULT_PDA_SEED: &[u8] = b"vault";
+const STAKING_ACCOUNT_PDA_SEED: &[u8] = b"receipt";
 const STAKING_AMOUNT: u64 = 1;
 const MINIMUM_COLLECTION_PERIOD: i64 = 86400; // 1 day in seconds
 // const MINIMUM_COLLECTION_PERIOD: i64 = 10; // testing purposes
@@ -231,24 +232,18 @@ pub mod staking {
 
         if ctx.accounts.staking_account.is_one_of_one == true {
             if ctx.accounts.staking_account.staking_period == 0 {
-                amount = ONE_WEEK_REWARD_OOO;
                 full_amount = ONE_WEEK_REWARD_OOO
             } else if ctx.accounts.staking_account.staking_period == 1 {
-                amount = TWO_WEEK_REWARD_OOO;
                 full_amount = TWO_WEEK_REWARD_OOO
             } else if ctx.accounts.staking_account.staking_period == 2 {
-                amount = FOUR_WEEK_REWARD_OOO;
                 full_amount = FOUR_WEEK_REWARD_OOO
             }
         } else {
             if ctx.accounts.staking_account.staking_period == 0 {
-                amount = ONE_WEEK_REWARD;
                 full_amount = ONE_WEEK_REWARD
             } else if ctx.accounts.staking_account.staking_period == 1 {
-                amount = TWO_WEEK_REWARD;
                 full_amount = TWO_WEEK_REWARD
             } else if ctx.accounts.staking_account.staking_period == 2 {
-                amount = FOUR_WEEK_REWARD;
                 full_amount = FOUR_WEEK_REWARD
             }
         }
@@ -257,13 +252,8 @@ pub mod staking {
             return Err(ErrorCode::FullRewardAlreadyCollected.into())
         }
 
-        // Catch cases that might results in the staking_token_owner collecting more than the full_amount
-        if amount > full_amount || amount + ctx.accounts.staking_account.total_reward_collected > full_amount{
-            amount = full_amount - ctx.accounts.staking_account.total_reward_collected;
-        }
-
         // Subtract any rewards collected along the way from the total reward amount for the staking period
-        amount = amount - ctx.accounts.staking_account.total_reward_collected; 
+        amount = full_amount - ctx.accounts.staking_account.total_reward_collected; 
 
         // Find the PDA/bump and set the signature
         let (_mint_authority, mint_authority_bump) =
@@ -328,7 +318,7 @@ pub mod staking {
 pub struct AuthorityInit<'info> {
     #[account(
         init,
-        seeds = [b"authority".as_ref(), reward_mint.key().as_ref()],
+        seeds = [MINT_AUTHORITY_PDA_SEED, reward_mint.key().as_ref()],
         bump,
         payer = admin,
         space = 8 + 8,
@@ -355,7 +345,7 @@ pub struct Stake<'info> {
     pub staking_mint: Account<'info, Mint>, 
     #[account(
         init,
-        seeds = [b"receipt".as_ref(), staking_account.key().as_ref(), staking_mint.key().as_ref()],
+        seeds = [STAKING_ACCOUNT_PDA_SEED, staking_account.key().as_ref(), staking_mint.key().as_ref()],
         bump,
         payer = staking_token_owner,
         token::mint = staking_mint,
@@ -402,7 +392,7 @@ pub struct Collect<'info> {
     /// CHECK: this is safe because it is a PDA bound to this program
     #[account(
         mut,
-        seeds = [b"authority".as_ref(), reward_mint.key().as_ref()],
+        seeds = [MINT_AUTHORITY_PDA_SEED, reward_mint.key().as_ref()],
         bump,
     )]
     pub reward_mint_authority: AccountInfo<'info>,
@@ -449,7 +439,7 @@ pub struct CollectFull<'info> {
     /// CHECK: this is safe because it is a PDA bound to this program
     #[account(
         mut,
-        seeds = [b"authority".as_ref(), reward_mint.key().as_ref()],
+        seeds = [MINT_AUTHORITY_PDA_SEED, reward_mint.key().as_ref()],
         bump,
     )]
     pub reward_mint_authority: AccountInfo<'info>,
@@ -501,7 +491,7 @@ pub struct Unstake<'info> {
     /// CHECK: this is safe because it is calculated by the client
     pub vault_authority: AccountInfo<'info>,
     #[account(mut, 
-        seeds = [b"receipt".as_ref(), staking_account.key().as_ref(), staking_mint.key().as_ref()],
+        seeds = [STAKING_ACCOUNT_PDA_SEED, staking_account.key().as_ref(), staking_mint.key().as_ref()],
         bump,
     )]
     pub owner_staking_token_account: Account<'info, TokenAccount>,
