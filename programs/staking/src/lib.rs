@@ -408,7 +408,6 @@ pub struct Collect<'info> {
         constraint = staking_account.staking_mint == *staking_mint.to_account_info().key,
     )]
     pub staking_account: Box<Account<'info, StakeAccount>>,
-    // This is required to be passed in as an added layer of validation to be checked against the staking account
     pub staking_mint: Account<'info, Mint>,
     #[account(
         constraint = *reward_mint.to_account_info().key == MINT_ADDRESS,
@@ -455,7 +454,6 @@ pub struct CollectFull<'info> {
         constraint = staking_account.staking_mint == *staking_mint.to_account_info().key,
     )]
     pub staking_account: Box<Account<'info, StakeAccount>>,
-    // This is required to be passed in as an added layer of validation to be checked against the staking account
     pub staking_mint: Account<'info, Mint>,
     #[account(
         constraint = *reward_mint.to_account_info().key == MINT_ADDRESS,
@@ -485,9 +483,17 @@ pub struct Unstake<'info> {
     #[account(mut)] 
     pub staking_token_owner: Signer<'info>,
     pub staking_mint: Account<'info, Mint>, 
-    #[account(mut)] 
+    #[account(
+        mut,
+        seeds = [STAKING_ACCOUNT_PDA_SEED, staking_account.key().as_ref(), staking_mint.key().as_ref()],
+        bump
+    )]
     pub vault_account: Account<'info, TokenAccount>,
     /// CHECK: this is safe because it is calculated by the client
+    #[account(
+        seeds = [VAULT_PDA_SEED, staking_account.to_account_info().key().as_ref()],
+        bump
+    )]
     pub vault_authority: AccountInfo<'info>,
     #[account(mut, 
         seeds = [STAKING_ACCOUNT_PDA_SEED, staking_account.key().as_ref(), staking_mint.key().as_ref()],
